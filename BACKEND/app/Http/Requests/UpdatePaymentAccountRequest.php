@@ -25,7 +25,7 @@ class UpdatePaymentAccountRequest extends FormRequest
             'bank_name' => 'sometimes|required|string|max:255',
             'account_number' => 'sometimes|required|string|max:255',
             'account_holder_name' => 'sometimes|required|string|max:255',
-            'qr_code_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'qr_code_image' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
             'is_active' => 'nullable',
             'note' => 'nullable|string',
         ];

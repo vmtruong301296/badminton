@@ -45,7 +45,7 @@ export default function PaymentAccountsManagement() {
         is_active: account.is_active ?? true,
         note: account.note || '',
       });
-      setPreviewImage(account.qr_code_image ? `/storage/${account.qr_code_image}` : null);
+      setPreviewImage(getImageUrl(account.qr_code_image, account.qr_code_image_url));
     } else {
       setEditingAccount(null);
       setFormData({
@@ -91,18 +91,41 @@ export default function PaymentAccountsManagement() {
     e.preventDefault();
     try {
       // Prepare data with proper boolean conversion
+      // Only include qr_code_image if it's a File object (new file selected)
       const submitData = {
-        ...formData,
+        bank_name: formData.bank_name,
+        account_number: formData.account_number,
+        account_holder_name: formData.account_holder_name,
         is_active: formData.is_active === true || formData.is_active === 'true' || formData.is_active === 1,
+        note: formData.note,
       };
       
+      // Only include qr_code_image if it's a File object
+      if (formData.qr_code_image instanceof File) {
+        submitData.qr_code_image = formData.qr_code_image;
+      }
+      
+      // Debug: Check if file is included
+      console.log('Submitting data:', {
+        ...submitData,
+        qr_code_image: submitData.qr_code_image instanceof File ? `File: ${submitData.qr_code_image.name}` : 'Not included'
+      });
+      
       if (editingAccount) {
-        await paymentAccountsApi.update(editingAccount.id, submitData);
+        const response = await paymentAccountsApi.update(editingAccount.id, submitData);
+        console.log('Update response:', response.data);
+        console.log('Update response - qr_code_image:', response.data.qr_code_image);
+        console.log('Update response - qr_code_image_url:', response.data.qr_code_image_url);
+        
+        handleCloseModal();
+        
+        // Reload accounts immediately to get fresh data from server
+        await loadAccounts();
       } else {
         await paymentAccountsApi.create(submitData);
+        handleCloseModal();
+        await loadAccounts();
       }
-      handleCloseModal();
-      loadAccounts();
     } catch (error) {
       console.error('Error saving payment account:', error);
       alert('Có lỗi xảy ra khi lưu tài khoản: ' + (error.response?.data?.message || error.message));
@@ -129,7 +152,7 @@ export default function PaymentAccountsManagement() {
   };
 
   const getImageUrl = (imagePath, imageUrl) => {
-    // Prefer full URL from API if available
+    // Prefer full URL from API if available (already includes cache busting from backend)
     if (imageUrl) return imageUrl;
     if (!imagePath) return null;
     // Ensure proper URL format
@@ -183,6 +206,7 @@ export default function PaymentAccountsManagement() {
               {account.qr_code_image && (
                 <div className="mb-4">
                   <img
+                    key={getImageUrl(account.qr_code_image, account.qr_code_image_url)}
                     src={getImageUrl(account.qr_code_image, account.qr_code_image_url)}
                     alt="QR Code"
                     className="w-full h-auto border rounded-lg"
@@ -277,6 +301,7 @@ export default function PaymentAccountsManagement() {
                     Ảnh QR Code
                   </label>
                   <input
+                    key={editingAccount ? `file-${editingAccount.id}-${editingAccount.updated_at || Date.now()}` : 'file-new'}
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
@@ -285,9 +310,13 @@ export default function PaymentAccountsManagement() {
                   {previewImage && (
                     <div className="mt-2">
                       <img
+                        key={previewImage}
                         src={previewImage}
                         alt="QR Code Preview"
                         className="w-48 h-48 object-contain border rounded-lg"
+                        onError={() => {
+                          console.error('Error loading preview image:', previewImage);
+                        }}
                       />
                     </div>
                   )}

@@ -15,6 +15,7 @@ export default function BillDetail() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [uncheckPaymentConfirm, setUncheckPaymentConfirm] = useState({ isOpen: false, playerId: null, playerName: '' });
   const [paymentAccounts, setPaymentAccounts] = useState([]);
+  const [paymentAccountImages, setPaymentAccountImages] = useState({}); // Store base64 images: { accountId: base64 }
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef(null);
 
@@ -101,10 +102,93 @@ export default function BillDetail() {
     setDeleteConfirm(false);
   };
 
+  // Helper to convert image URL to base64 using fetch API (bypasses CORS)
+  const loadImageAsBase64 = async (url) => {
+    try {
+      console.log('loadImageAsBase64 - Starting for URL:', url);
+
+      // Convert storage URL to API route if needed
+      let apiUrl = url;
+      if (url.includes('/storage/')) {
+        // Extract path after /storage/
+        const pathMatch = url.match(/\/storage\/(.+?)(?:\?|$)/);
+        if (pathMatch && pathMatch[1]) {
+          const cleanPath = pathMatch[1];
+          // If URL is absolute (starts with http), extract just the path
+          if (url.startsWith('http')) {
+            apiUrl = `/api/images/${cleanPath}`;
+          } else {
+            apiUrl = `/api/images/${cleanPath}`;
+          }
+          console.log('loadImageAsBase64 - Converted to API route:', apiUrl);
+        } else {
+          console.warn('loadImageAsBase64 - Could not extract path from URL:', url);
+        }
+      }
+
+      // Use fetch to get image as blob
+      const response = await fetch(apiUrl, {
+        mode: 'cors',
+        credentials: 'omit',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      console.log('loadImageAsBase64 - Blob received, size:', blob.size, 'type:', blob.type);
+
+      // Convert blob to base64
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result;
+          console.log('loadImageAsBase64 - Converted to base64, length:', base64.length);
+          resolve(base64);
+        };
+        reader.onerror = (error) => {
+          console.error('loadImageAsBase64 - FileReader error:', error);
+          reject(error);
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('loadImageAsBase64 - Error:', error, 'URL:', url);
+      throw error;
+    }
+  };
+
   const loadPaymentAccounts = async () => {
     try {
       const response = await paymentAccountsApi.getAll({ is_active: true });
+      console.log('BillDetail - Payment accounts loaded:', response.data);
+
       setPaymentAccounts(response.data);
+
+      // Preload and convert images to base64
+      const imageMap = {};
+      const imagePromises = response.data
+        .filter(acc => acc.is_active && acc.qr_code_image)
+        .map(async (acc) => {
+          try {
+            const imageUrl = acc.qr_code_image_url ||
+              (acc.qr_code_image ? `${window.location.origin}/storage/${acc.qr_code_image}` : null);
+
+            if (imageUrl) {
+              console.log(`Preloading image for account ${acc.id}:`, imageUrl);
+              const base64 = await loadImageAsBase64(imageUrl);
+              imageMap[acc.id] = base64;
+              console.log(`Account ${acc.id}: Image preloaded successfully`);
+            }
+          } catch (error) {
+            console.error(`Failed to preload image for account ${acc.id}:`, error);
+          }
+        });
+
+      await Promise.all(imagePromises);
+      setPaymentAccountImages(imageMap);
+      console.log('All payment account images preloaded:', Object.keys(imageMap));
     } catch (error) {
       console.error('Error loading payment accounts:', error);
     }
@@ -115,16 +199,83 @@ export default function BillDetail() {
 
     try {
       setExporting(true);
-      
-      // Wait a bit for images to load
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Ensure all payment account images are preloaded before export
+      const accountsNeedingPreload = paymentAccounts
+        .filter(acc => acc.is_active && acc.qr_code_image && !paymentAccountImages[acc.id]);
+
+      if (accountsNeedingPreload.length > 0) {
+        console.log('Preloading missing images before export:', accountsNeedingPreload.length);
+        const imageMap = { ...paymentAccountImages };
+
+        await Promise.all(accountsNeedingPreload.map(async (acc) => {
+          try {
+            const imageUrl = acc.qr_code_image_url ||
+              (acc.qr_code_image ? `${window.location.origin}/storage/${acc.qr_code_image}` : null);
+
+            if (imageUrl) {
+              console.log(`Preloading image for account ${acc.id} before export:`, imageUrl);
+              const base64 = await loadImageAsBase64(imageUrl);
+              imageMap[acc.id] = base64;
+              console.log(`Account ${acc.id}: Image preloaded before export`);
+            }
+          } catch (error) {
+            console.error(`Failed to preload image for account ${acc.id} before export:`, error);
+          }
+        }));
+
+        setPaymentAccountImages(imageMap);
+        // Wait a bit for state to update and component to re-render
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      // Images should now be preloaded as base64, wait for DOM to be ready
+      const images = exportRef.current.querySelectorAll('img.bill-export-image');
+      console.log('Found QR code images for export:', images.length);
+
+      // Log image sources
+      Array.from(images).forEach((img, index) => {
+        console.log(`Image ${index}: src type:`, img.src.startsWith('data:') ? 'base64' : 'URL', 'complete:', img.complete);
+      });
+
+      // Wait for all images to be ready
+      const imageReadyPromises = Array.from(images).map((img, index) => {
+        return new Promise((resolve) => {
+          if (img.complete && img.naturalHeight > 0) {
+            console.log(`Image ${index}: Ready (base64: ${img.src.startsWith('data:')})`);
+            resolve();
+            return;
+          }
+
+          img.onload = () => {
+            console.log(`Image ${index}: Loaded`);
+            resolve();
+          };
+
+          img.onerror = () => {
+            console.error(`Image ${index}: Failed to load`);
+            resolve(); // Continue even if image fails
+          };
+
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            console.warn(`Image ${index}: Timeout`);
+            resolve();
+          }, 5000);
+        });
+      });
+
+      await Promise.all(imageReadyPromises);
+
+      // Additional delay to ensure everything is rendered
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const canvas = await html2canvas(exportRef.current, {
         backgroundColor: '#ffffff',
         scale: 2,
         logging: false,
         useCORS: true,
-        allowTaint: false,
+        allowTaint: true, // Allow taint since we're using base64
       });
 
       // Convert canvas to image and download
@@ -153,7 +304,9 @@ export default function BillDetail() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold">Chi tiết Bill</h2>
+          <h2 className="text-2xl font-bold">
+            Chi tiết Bill #{bill.id}
+          </h2>
           <p className="text-gray-600">Ngày: {formatDate(bill.date)}</p>
         </div>
         <div className="flex space-x-3">
@@ -199,9 +352,9 @@ export default function BillDetail() {
             <div className="mb-3 pb-3 border-b border-blue-300">
               <h3 className="text-lg font-bold text-blue-900">Bill chính #{bill.id}</h3>
             </div>
-            <BillContent 
-              bill={bill} 
-              showHeader={false} 
+            <BillContent
+              bill={bill}
+              showHeader={false}
               onMarkPayment={handleMarkPayment}
               isMainBill={true}
             />
@@ -212,7 +365,9 @@ export default function BillDetail() {
             {bill.sub_bills.map((subBill) => (
               <div key={subBill.id} className="bg-gray-50 p-4 rounded-lg shadow border-2 border-green-200 flex flex-col">
                 <div className="mb-3 pb-3 border-b border-green-300">
-                  <h3 className="text-lg font-bold text-green-900">Bill con #{subBill.id}</h3>
+                  <h3 className="text-lg font-bold text-green-900">
+                    Bill con #{subBill.id}{subBill.note ? ` - ${subBill.note}` : ''}
+                  </h3>
                   <p className="text-xs text-gray-600">Ngày: {formatDate(subBill.date)}</p>
                 </div>
                 <BillContent bill={subBill} showHeader={false} />
@@ -224,153 +379,156 @@ export default function BillDetail() {
         <>
           {/* Bill Info */}
           <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div>
-            <div className="text-sm text-gray-600">Tổng tiền sân</div>
-            <div className="text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-gray-600">Tổng tiền sân</div>
+                <div className="text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Tổng tiền cầu</div>
+                <div className="text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Tổng tiền</div>
+                <div className="text-lg font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
+              </div>
+            </div>
+            {bill.note && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="text-sm text-gray-600">Ghi chú:</div>
+                <div className="text-gray-900">{bill.note}</div>
+              </div>
+            )}
           </div>
-          <div>
-            <div className="text-sm text-gray-600">Tổng tiền cầu</div>
-            <div className="text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-600">Tổng tiền</div>
-            <div className="text-lg font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
-          </div>
-        </div>
-        {bill.note && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="text-sm text-gray-600">Ghi chú:</div>
-            <div className="text-gray-900">{bill.note}</div>
-          </div>
-        )}
-      </div>
 
-      {/* Shuttles */}
-      {bill.bill_shuttles && bill.bill_shuttles.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-4">Chi tiết cầu</h3>
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Loại cầu</th>
-                <th className="text-right py-2">Số lượng</th>
-                <th className="text-right py-2">Đơn giá</th>
-                <th className="text-right py-2">Thành tiền</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bill.bill_shuttles.map((shuttle, index) => (
-                <tr key={index} className="border-b">
-                  <td className="py-2">{shuttle.shuttle_type?.name}</td>
-                  <td className="text-right py-2">{shuttle.quantity}</td>
-                  <td className="text-right py-2">{formatCurrencyRounded(shuttle.price_each)}</td>
-                  <td className="text-right py-2 font-semibold">
-                    {formatCurrencyRounded(shuttle.subtotal)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+          {/* Shuttles */}
+          {bill.bill_shuttles && bill.bill_shuttles.length > 0 && (
+            <div className="bg-white p-6 rounded-lg shadow mb-6">
+              <h3 className="text-lg font-semibold mb-4">Chi tiết cầu</h3>
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Loại cầu</th>
+                    <th className="text-right py-2">Số lượng</th>
+                    <th className="text-right py-2">Đơn giá</th>
+                    <th className="text-right py-2">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bill.bill_shuttles.map((shuttle, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="py-2">{shuttle.shuttle_type?.name}</td>
+                      <td className="text-right py-2">{shuttle.quantity}</td>
+                      <td className="text-right py-2">{formatCurrencyRounded(shuttle.price_each)}</td>
+                      <td className="text-right py-2 font-semibold">
+                        {formatCurrencyRounded(shuttle.subtotal)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      {/* Players Table */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">Chi tiết người chơi</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">STT</th>
-                <th className="text-left py-2">Tên</th>
-                <th className="text-right py-2">Mức tính</th>
-                <th className="text-right py-2">Chi phí thêm</th>
-                <th className="text-right py-2">Tiền nợ</th>
-                <th className="text-right py-2">Tổng tiền</th>
-                <th className="text-center py-2">Đã thanh toán</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bill.bill_players?.map((player, index) => (
-                <tr key={player.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3">{index + 1}</td>
-                  <td className="py-3 font-medium">{player.user?.name}</td>
-                  <td className="text-right py-3">{formatRatio(player.ratio_value)}</td>
-                  <td className="text-right py-3">
-                    {player.menu_extra_total > 0 ? (
-                      <div className="text-right">
-                        <div className="font-semibold mb-1">
-                          {formatCurrencyRounded(player.menu_extra_total)}
-                        </div>
-                        <div className="text-xs text-gray-600 space-y-1">
-                          {player.bill_player_menus?.map((menuItem, idx) => (
-                            <div key={idx} className="text-right">
-                              {menuItem.menu?.name} × {menuItem.quantity} = {formatCurrency(menuItem.subtotal)}
+          {/* Players Table */}
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Chi tiết người chơi</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">STT</th>
+                    <th className="text-left py-2">Tên</th>
+                    <th className="text-right py-2">Mức tính</th>
+                    <th className="text-right py-2">Chi phí thêm</th>
+                    <th className="text-right py-2">Tiền nợ</th>
+                    <th className="text-right py-2">Tổng tiền</th>
+                    <th className="text-center py-2">Đã thanh toán</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bill.bill_players?.map((player, index) => (
+                    <tr 
+                      key={player.id} 
+                      className={`border-b ${!player.is_paid ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
+                    >
+                      <td className="py-3">{index + 1}</td>
+                      <td className="py-3 font-medium">{player.user?.name}</td>
+                      <td className="text-right py-3">{formatRatio(player.ratio_value)}</td>
+                      <td className="text-right py-3">
+                        {player.menu_extra_total > 0 ? (
+                          <div className="text-right">
+                            <div className="font-semibold mb-1">
+                              {formatCurrencyRounded(player.menu_extra_total)}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="text-right py-3">
-                    {player.debt_amount > 0 ? (
-                      <div>
-                        <div>{formatCurrencyRounded(player.debt_amount)}</div>
-                        {player.debt_date && (
-                          <div className="text-xs text-gray-500">
-                            ({formatDate(player.debt_date)})
+                            <div className="text-xs text-gray-600 space-y-1">
+                              {player.bill_player_menus?.map((menuItem, idx) => (
+                                <div key={idx} className="text-right">
+                                  {menuItem.menu?.name} × {menuItem.quantity} = {formatCurrency(menuItem.subtotal)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="text-right py-3">
+                        {player.debt_amount > 0 ? (
+                          <div>
+                            <div>{formatCurrencyRounded(player.debt_amount)}</div>
+                            {player.debt_date && (
+                              <div className="text-xs text-gray-500">
+                                ({formatDate(player.debt_date)})
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="text-right py-3 font-semibold">
+                        {formatCurrencyRounded(player.total_amount)}
+                      </td>
+                      <td className="text-center py-3">
+                        <input
+                          type="checkbox"
+                          checked={player.is_paid || false}
+                          onChange={(e) => {
+                            // Nếu đang uncheck, prevent default và hiển thị dialog
+                            if (player.is_paid && !e.target.checked) {
+                              e.preventDefault();
+                              handleMarkPayment(player.user_id, false);
+                            } else {
+                              // Nếu đang check, cho phép update ngay
+                              handleMarkPayment(player.user_id, e.target.checked);
+                            }
+                          }}
+                          className="w-5 h-5 cursor-pointer"
+                        />
+                        {player.paid_at && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(player.paid_at).toLocaleString('vi-VN')}
                           </div>
                         )}
-                      </div>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="text-right py-3 font-semibold">
-                    {formatCurrencyRounded(player.total_amount)}
-                  </td>
-                  <td className="text-center py-3">
-                    <input
-                      type="checkbox"
-                      checked={player.is_paid || false}
-                      onChange={(e) => {
-                        // Nếu đang uncheck, prevent default và hiển thị dialog
-                        if (player.is_paid && !e.target.checked) {
-                          e.preventDefault();
-                          handleMarkPayment(player.user_id, false);
-                        } else {
-                          // Nếu đang check, cho phép update ngay
-                          handleMarkPayment(player.user_id, e.target.checked);
-                        }
-                      }}
-                      className="w-5 h-5 cursor-pointer"
-                    />
-                    {player.paid_at && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        {new Date(player.paid_at).toLocaleString('vi-VN')}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 font-bold">
-                <td colSpan="5" className="py-3 text-right">Tổng cộng:</td>
-                <td className="text-right py-3">
-                  {formatCurrencyRounded(
-                    bill.bill_players?.reduce((sum, p) => sum + p.total_amount, 0) || 0
-                  )}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 font-bold">
+                    <td colSpan="5" className="py-3 text-right">Tổng cộng:</td>
+                    <td className="text-right py-3">
+                      {formatCurrencyRounded(
+                        bill.bill_players?.reduce((sum, p) => sum + p.total_amount, 0) || 0
+                      )}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
         </>
       )}
 
@@ -381,8 +539,8 @@ export default function BillDetail() {
             <div>
               <h3 className="text-lg font-semibold text-blue-900 mb-2">Bill con của</h3>
               <p className="text-sm text-gray-700">
-                Bill chính #{bill.parent_bill.id} | 
-                Ngày: {formatDate(bill.parent_bill.date)} | 
+                Bill chính #{bill.parent_bill.id} |
+                Ngày: {formatDate(bill.parent_bill.date)} |
                 Tổng tiền: {formatCurrencyRounded(bill.parent_bill.total_amount)}
               </p>
             </div>
@@ -416,7 +574,7 @@ export default function BillDetail() {
       {/* Hidden export component for image generation */}
       <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
         <div ref={exportRef}>
-          <BillExport bill={bill} paymentAccounts={paymentAccounts} />
+          <BillExport bill={bill} paymentAccounts={paymentAccounts} paymentAccountImages={paymentAccountImages} />
         </div>
       </div>
     </div>

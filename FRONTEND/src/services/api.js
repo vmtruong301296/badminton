@@ -72,10 +72,16 @@ export const paymentAccountsApi = {
   getById: (id) => api.get(`/payment-accounts/${id}`),
   create: (data) => {
     const formData = new FormData();
+    
     Object.keys(data).forEach((key) => {
       if (data[key] !== null && data[key] !== undefined) {
-        if (key === 'qr_code_image' && data[key] instanceof File) {
-          formData.append(key, data[key]);
+        if (key === 'qr_code_image') {
+          // Only append if it's a File object
+          if (data[key] instanceof File) {
+            formData.append(key, data[key]);
+            console.log('API create - Sending file:', data[key].name, `(${data[key].size} bytes)`);
+          }
+          // If not a File, don't send this field
         } else if (key === 'is_active') {
           // Convert boolean to string '1' or '0' for FormData
           formData.append(key, data[key] ? '1' : '0');
@@ -84,31 +90,49 @@ export const paymentAccountsApi = {
         }
       }
     });
-    return api.post('/payment-accounts', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    
+    // Use axios directly to avoid default headers interfering with FormData
+    // Create a new axios instance without default Content-Type header for this request
+    const axiosInstance = axios.create({
+      baseURL: '/api',
     });
+    
+    return axiosInstance.post('/payment-accounts', formData);
   },
   update: (id, data) => {
     const formData = new FormData();
+    
     Object.keys(data).forEach((key) => {
-      if (data[key] !== null && data[key] !== undefined) {
-        if (key === 'qr_code_image' && data[key] instanceof File) {
+      // Handle qr_code_image - only append if it's a File object (new file selected)
+      if (key === 'qr_code_image') {
+        if (data[key] instanceof File) {
           formData.append(key, data[key]);
-        } else if (key === 'is_active') {
+          console.log('API update - Sending new file:', data[key].name, `(${data[key].size} bytes)`);
+        }
+        // If not a File, don't send this field (Laravel will keep existing image)
+        return;
+      }
+      
+      // Append other fields
+      if (data[key] !== null && data[key] !== undefined) {
+        if (key === 'is_active') {
           // Convert boolean to string '1' or '0' for FormData
           formData.append(key, data[key] ? '1' : '0');
-        } else if (key !== 'qr_code_image') {
+        } else {
           formData.append(key, data[key]);
         }
       }
     });
-    // Only append qr_code_image if it's a new file
-    if (data.qr_code_image instanceof File) {
-      formData.append('qr_code_image', data.qr_code_image);
-    }
-    return api.put(`/payment-accounts/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    
+    // Laravel doesn't parse FormData well with PUT requests
+    // Use POST route instead
+    // Use axios directly to avoid default headers interfering with FormData
+    // Create a new axios instance without default Content-Type header for this request
+    const axiosInstance = axios.create({
+      baseURL: '/api',
     });
+    
+    return axiosInstance.post(`/payment-accounts/${id}/update`, formData);
   },
   delete: (id) => api.delete(`/payment-accounts/${id}`),
 };

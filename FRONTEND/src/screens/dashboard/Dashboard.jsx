@@ -11,6 +11,7 @@ export default function Dashboard() {
     date_from: '',
     date_to: '',
     player_id: '',
+    status: ['partial', 'unpaid'], // Array of selected statuses: 'paid', 'partial', 'unpaid'
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, billId: null });
 
@@ -27,7 +28,25 @@ export default function Dashboard() {
       if (filters.player_id) params.player_id = filters.player_id;
 
       const response = await billsApi.getAll(params);
-      setBills(response.data);
+      let filteredBills = response.data;
+      
+      // Filter by status on frontend (multiple statuses can be selected)
+      if (filters.status && filters.status.length > 0) {
+        filteredBills = filteredBills.filter((bill) => {
+          const allPaid = bill.bill_players?.every((p) => p.is_paid) || false;
+          const somePaid = bill.bill_players?.some((p) => p.is_paid) || false;
+          
+          // Check if bill matches any of the selected statuses
+          return filters.status.some((status) => {
+            if (status === 'paid') return allPaid && bill.bill_players?.length > 0;
+            if (status === 'partial') return somePaid && !allPaid;
+            if (status === 'unpaid') return !somePaid;
+            return false;
+          });
+        });
+      }
+      
+      setBills(filteredBills);
     } catch (error) {
       console.error('Error loading bills:', error);
     } finally {
@@ -86,7 +105,7 @@ export default function Dashboard() {
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Từ ngày
@@ -109,9 +128,61 @@ export default function Dashboard() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Trạng thái
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={filters.status.includes('paid')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFilters({ ...filters, status: [...filters.status, 'paid'] });
+                    } else {
+                      setFilters({ ...filters, status: filters.status.filter(s => s !== 'paid') });
+                    }
+                  }}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Đã thanh toán</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={filters.status.includes('partial')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFilters({ ...filters, status: [...filters.status, 'partial'] });
+                    } else {
+                      setFilters({ ...filters, status: filters.status.filter(s => s !== 'partial') });
+                    }
+                  }}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Thanh toán một phần</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={filters.status.includes('unpaid')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFilters({ ...filters, status: [...filters.status, 'unpaid'] });
+                    } else {
+                      setFilters({ ...filters, status: filters.status.filter(s => s !== 'unpaid') });
+                    }
+                  }}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Chưa thanh toán</span>
+              </label>
+            </div>
+          </div>
           <div className="flex items-end">
             <button
-              onClick={() => setFilters({ date_from: '', date_to: '', player_id: '' })}
+              onClick={() => setFilters({ date_from: '', date_to: '', player_id: '', status: [] })}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
             >
               Xóa bộ lọc
@@ -146,7 +217,7 @@ export default function Dashboard() {
                   Trạng thái
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Người tạo
+                  SL chưa TT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thao tác
@@ -192,8 +263,8 @@ export default function Dashboard() {
                       {getStatusText(bill)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {bill.creator?.name || 'N/A'}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {bill.bill_players?.filter(p => !p.is_paid).length || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-3">

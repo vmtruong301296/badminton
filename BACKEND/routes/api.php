@@ -33,5 +33,39 @@ Route::post('bills/{id}/sub-bills', [BillController::class, 'createSubBill']);
 Route::apiResource('debts', DebtController::class);
 
 // Payment Accounts (Tài khoản nhận tiền)
+// POST route for updating with file upload (must be before apiResource to avoid route conflict)
+Route::post('payment-accounts/{id}/update', [PaymentAccountController::class, 'update']);
 Route::apiResource('payment-accounts', PaymentAccountController::class);
+
+// Serve images with CORS headers
+Route::get('images/{path}', function ($path) {
+    // Decode URL-encoded path
+    $decodedPath = urldecode($path);
+    
+    // Security: Only allow files from storage/app/public
+    $filePath = storage_path('app/public/' . $decodedPath);
+    $storagePath = storage_path('app/public');
+    
+    // Ensure the file is within the storage directory (prevent directory traversal)
+    $realFilePath = realpath($filePath);
+    $realStoragePath = realpath($storagePath);
+    
+    if (!$realFilePath || !$realStoragePath || strpos($realFilePath, $realStoragePath) !== 0) {
+        abort(404, 'File not found');
+    }
+    
+    if (!file_exists($realFilePath) || !is_file($realFilePath)) {
+        abort(404, 'File not found');
+    }
+    
+    $mimeType = mime_content_type($realFilePath) ?: 'application/octet-stream';
+    
+    return response()->file($realFilePath, [
+        'Content-Type' => $mimeType,
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+        'Access-Control-Allow-Headers' => 'Content-Type',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+})->where('path', '.*');
 

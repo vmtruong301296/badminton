@@ -1,6 +1,6 @@
 import { formatCurrencyRounded, formatDate, formatRatio } from '../../utils/formatters';
 
-export default function BillContent({ bill, showHeader = true, onNavigate, onMarkPayment, isMainBill = false }) {
+export default function BillContent({ bill, showHeader = true, onMarkPayment, isMainBill = false }) {
   if (!bill) return null;
 
   return (
@@ -29,12 +29,6 @@ export default function BillContent({ bill, showHeader = true, onNavigate, onMar
               <div className="text-sm font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
             </div>
           </div>
-          {bill.note && (
-            <div className="mt-3 pt-3 border-t">
-              <div className="text-xs text-gray-600">Ghi chú:</div>
-              <div className="text-sm text-gray-900">{bill.note}</div>
-            </div>
-          )}
         </div>
 
         {/* Shuttles */}
@@ -86,7 +80,10 @@ export default function BillContent({ bill, showHeader = true, onNavigate, onMar
               </thead>
               <tbody>
                 {bill.bill_players?.map((player, index) => (
-                  <tr key={player.id} className="border-b hover:bg-gray-50">
+                  <tr 
+                    key={player.id} 
+                    className={`border-b ${!player.is_paid ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
+                  >
                     <td className="py-2">{index + 1}</td>
                     <td className="py-2 font-medium">{player.user?.name}</td>
                     <td className="text-right py-2">{formatRatio(player.ratio_value)}</td>
