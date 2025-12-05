@@ -12,6 +12,7 @@ export default function Layout({ children }) {
     { path: '/ratios', label: 'Mức tính', icon: '⚖️' },
     { path: '/menus', label: 'Menu nước', icon: '🥤' },
     { path: '/shuttles', label: 'Loại cầu', icon: '🏸' },
+    { path: '/payment-accounts', label: 'Tài khoản nhận tiền', icon: '💳' },
   ];
 
   return (

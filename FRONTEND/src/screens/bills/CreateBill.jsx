@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { billsApi, playersApi, shuttlesApi } from '../../services/api';
-import { calculateBillPreview, formatCurrency, formatRatio } from '../../utils/formatters';
+import { calculateBillPreview, formatCurrency, formatCurrencyRounded, formatDate, formatRatio } from '../../utils/formatters';
 import CurrencyInput from '../../components/common/CurrencyInput';
 import NumberInput from '../../components/common/NumberInput';
 import DatePicker from '../../components/common/DatePicker';
@@ -12,8 +12,11 @@ import BillSummary from '../../components/bill/BillSummary';
 
 export default function CreateBill() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const parentBillId = searchParams.get('parent_id');
   const [loading, setLoading] = useState(false);
   const [shuttleTypes, setShuttleTypes] = useState([]);
+  const [parentBill, setParentBill] = useState(null);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -21,13 +24,17 @@ export default function CreateBill() {
     court_total: 0,
     shuttles: [],
     players: [],
+    parent_bill_id: parentBillId || null,
   });
 
   const [preview, setPreview] = useState(null);
 
   useEffect(() => {
     loadShuttleTypes();
-  }, []);
+    if (parentBillId) {
+      loadParentBill();
+    }
+  }, [parentBillId]);
 
   useEffect(() => {
     updatePreview();
@@ -54,6 +61,22 @@ export default function CreateBill() {
       }
     } catch (error) {
       console.error('Error loading shuttle types:', error);
+    }
+  };
+
+  const loadParentBill = async () => {
+    try {
+      const response = await billsApi.getById(parentBillId);
+      setParentBill(response.data);
+      // Set date same as parent bill (format to YYYY-MM-DD)
+      const parentDate = response.data.date;
+      const formattedDate = parentDate ? formatDate(parentDate) : new Date().toISOString().split('T')[0];
+      setFormData((prev) => ({
+        ...prev,
+        date: formattedDate,
+      }));
+    } catch (error) {
+      console.error('Error loading parent bill:', error);
     }
   };
 
@@ -180,6 +203,7 @@ export default function CreateBill() {
         date: formData.date,
         note: formData.note || null,
         court_total: formData.court_total,
+        parent_bill_id: formData.parent_bill_id || null,
         shuttles: formData.shuttles
           .filter((s) => s.shuttle_type_id)
           .map((s) => ({
@@ -208,7 +232,31 @@ export default function CreateBill() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Tạo Bill mới</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">
+          {parentBill ? `Tạo Bill con cho Bill #${parentBill.id}` : 'Tạo Bill mới'}
+        </h2>
+        {parentBill && (
+          <button
+            type="button"
+            onClick={() => navigate(`/bills/${parentBill.id}`)}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            ← Về Bill chính
+          </button>
+        )}
+      </div>
+
+      {parentBill && (
+        <div className="bg-blue-50 p-4 rounded-lg mb-6 border-2 border-blue-200">
+          <p className="text-sm text-blue-900">
+            <strong>Bill chính:</strong> Bill #{parentBill.id} | 
+            Ngày: {formatDate(parentBill.date)} | 
+            Tổng tiền: {formatCurrencyRounded(parentBill.total_amount)} | 
+            {parentBill.bill_players?.length || 0} người chơi
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -22,7 +22,7 @@ class BillController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Bill::with(['creator', 'billShuttles.shuttleType', 'billPlayers.user', 'billPlayers.billPlayerMenus.menu']);
+        $query = Bill::with(['creator', 'billShuttles.shuttleType', 'billPlayers.user', 'billPlayers.billPlayerMenus.menu', 'parentBill', 'subBills']);
 
         // Filter by date
         if ($request->has('date_from')) {
@@ -42,6 +42,16 @@ class BillController extends Controller
             $query->whereHas('billPlayers', function ($q) use ($request) {
                 $q->where('user_id', $request->player_id);
             });
+        }
+
+        // Filter by parent bill (only main bills, not sub-bills)
+        if ($request->has('main_only') && $request->main_only) {
+            $query->whereNull('parent_bill_id');
+        }
+
+        // Filter by parent bill id
+        if ($request->has('parent_bill_id')) {
+            $query->where('parent_bill_id', $request->parent_bill_id);
         }
 
         $bills = $query->orderBy('date', 'desc')->get();
@@ -127,6 +137,7 @@ class BillController extends Controller
                 'total_shuttle_price' => $totalShuttlePrice,
                 'total_amount' => $totalAmount,
                 'unit_price' => $unitPrice,
+                'parent_bill_id' => $request->parent_bill_id ?? null,
             ]);
 
             // Create bill shuttles
@@ -204,7 +215,16 @@ class BillController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $bill = Bill::with(['creator', 'billShuttles.shuttleType', 'billPlayers.user', 'billPlayers.billPlayerMenus.menu'])
+        $bill = Bill::with([
+            'creator', 
+            'billShuttles.shuttleType', 
+            'billPlayers.user', 
+            'billPlayers.billPlayerMenus.menu',
+            'parentBill',
+            'subBills.billShuttles.shuttleType',
+            'subBills.billPlayers.user',
+            'subBills.billPlayers.billPlayerMenus.menu',
+        ])
             ->findOrFail($id);
 
         return response()->json($bill);
@@ -277,5 +297,38 @@ class BillController extends Controller
         $bill->delete();
 
         return response()->json(['message' => 'Bill deleted successfully']);
+    }
+
+    /**
+     * Get sub-bills of a parent bill
+     */
+    public function subBills(string $id): JsonResponse
+    {
+        $parentBill = Bill::findOrFail($id);
+        $subBills = Bill::with([
+            'creator',
+            'billShuttles.shuttleType',
+            'billPlayers.user',
+            'billPlayers.billPlayerMenus.menu',
+        ])
+            ->where('parent_bill_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($subBills);
+    }
+
+    /**
+     * Create a sub-bill from a parent bill
+     */
+    public function createSubBill(StoreBillRequest $request, string $id): JsonResponse
+    {
+        $parentBill = Bill::findOrFail($id);
+        
+        // Set parent_bill_id in request
+        $request->merge(['parent_bill_id' => $id]);
+        
+        // Call store method with modified request
+        return $this->store($request);
     }
 }

@@ -1,4 +1,4 @@
-import { formatCurrency, formatRatio } from '../../utils/formatters';
+import { formatCurrency, formatCurrencyRounded, formatRatio } from '../../utils/formatters';
 
 export default function BillSummary({ preview }) {
   if (!preview) return null;
@@ -10,17 +10,17 @@ export default function BillSummary({ preview }) {
       <div className="space-y-3">
         <div className="flex justify-between">
           <span className="text-gray-600">Tổng tiền sân:</span>
-          <span className="font-medium">{formatCurrency(preview.court_total || 0)}</span>
+          <span className="font-medium">{formatCurrencyRounded(preview.court_total || 0)}</span>
         </div>
         
         <div className="flex justify-between">
           <span className="text-gray-600">Tổng tiền cầu:</span>
-          <span className="font-medium">{formatCurrency(preview.total_shuttle_price || 0)}</span>
+          <span className="font-medium">{formatCurrencyRounded(preview.total_shuttle_price || 0)}</span>
         </div>
         
         <div className="flex justify-between border-t pt-2">
           <span className="font-semibold">Tổng tiền:</span>
-          <span className="font-bold text-lg">{formatCurrency(preview.total_amount || 0)}</span>
+          <span className="font-bold text-lg">{formatCurrencyRounded(preview.total_amount || 0)}</span>
         </div>
         
         <div className="mt-4 pt-4 border-t">
@@ -32,7 +32,7 @@ export default function BillSummary({ preview }) {
             </div>
             <div className="flex justify-between">
               <span>Unit price:</span>
-              <span>{formatCurrency(Math.round(preview.unit_price || 0))}</span>
+              <span>{formatCurrencyRounded(Math.round(preview.unit_price || 0))}</span>
             </div>
           </div>
         </div>
@@ -55,15 +55,15 @@ export default function BillSummary({ preview }) {
               <div key={index} className="text-sm bg-gray-50 p-2 rounded">
                 <div className="font-medium">{player.name}</div>
                 <div className="text-xs text-gray-600 space-y-1 mt-1">
-                  <div>Share: {formatCurrency(player.share_amount || 0)}</div>
+                  <div>Share: {formatCurrencyRounded(player.share_amount || 0)}</div>
                   {player.menu_extra_total > 0 && (
-                    <div>Menu: {formatCurrency(player.menu_extra_total)}</div>
+                    <div>Menu: {formatCurrencyRounded(player.menu_extra_total)}</div>
                   )}
                   {player.debt_amount > 0 && (
-                    <div>Nợ: {formatCurrency(player.debt_amount)}</div>
+                    <div>Nợ: {formatCurrencyRounded(player.debt_amount)}</div>
                   )}
                   <div className="font-semibold pt-1 border-t">
-                    Tổng: {formatCurrency(player.total_amount || 0)}
+                    Tổng: {formatCurrencyRounded(player.total_amount || 0)}
                   </div>
                 </div>
               </div>

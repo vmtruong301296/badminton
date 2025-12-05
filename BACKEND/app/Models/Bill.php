@@ -17,6 +17,7 @@ class Bill extends Model
         'total_shuttle_price',
         'total_amount',
         'unit_price',
+        'parent_bill_id',
     ];
 
     protected function casts(): array
@@ -41,5 +42,16 @@ class Bill extends Model
     public function billPlayers(): HasMany
     {
         return $this->hasMany(BillPlayer::class);
+    }
+
+    // Sub-bills relationship
+    public function parentBill(): BelongsTo
+    {
+        return $this->belongsTo(Bill::class, 'parent_bill_id');
+    }
+
+    public function subBills(): HasMany
+    {
+        return $this->hasMany(Bill::class, 'parent_bill_id');
     }
 }

@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { billsApi } from '../../services/api';
-import { formatCurrency, formatDate, formatRatio } from '../../utils/formatters';
+import { billsApi, paymentAccountsApi } from '../../services/api';
+import { formatCurrency, formatCurrencyRounded, formatDate, formatRatio } from '../../utils/formatters';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import BillContent from '../../components/bill/BillContent';
+import BillExport from '../../components/bill/BillExport';
+import html2canvas from 'html2canvas';
 
 export default function BillDetail() {
   const { id } = useParams();
@@ -11,9 +14,13 @@ export default function BillDetail() {
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [uncheckPaymentConfirm, setUncheckPaymentConfirm] = useState({ isOpen: false, playerId: null, playerName: '' });
+  const [paymentAccounts, setPaymentAccounts] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const exportRef = useRef(null);
 
   useEffect(() => {
     loadBill();
+    loadPaymentAccounts();
   }, [id]);
 
   const loadBill = async () => {
@@ -50,11 +57,14 @@ export default function BillDetail() {
 
   const executeMarkPayment = async (playerId, isPaid) => {
     try {
-      await billsApi.markPayment(id, playerId, {
+      const response = await billsApi.markPayment(id, playerId, {
         amount: bill.bill_players.find((p) => p.user_id === playerId)?.total_amount,
         is_paid: isPaid,
       });
-      loadBill(); // Reload to get updated data
+      // Cập nhật state từ response thay vì reload toàn bộ trang
+      if (response.data && response.data.bill) {
+        setBill(response.data.bill);
+      }
     } catch (error) {
       console.error('Error marking payment:', error);
       alert('Có lỗi xảy ra');
@@ -91,6 +101,46 @@ export default function BillDetail() {
     setDeleteConfirm(false);
   };
 
+  const loadPaymentAccounts = async () => {
+    try {
+      const response = await paymentAccountsApi.getAll({ is_active: true });
+      setPaymentAccounts(response.data);
+    } catch (error) {
+      console.error('Error loading payment accounts:', error);
+    }
+  };
+
+  const handleExportBill = async () => {
+    if (!bill || !exportRef.current) return;
+
+    try {
+      setExporting(true);
+      
+      // Wait a bit for images to load
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const canvas = await html2canvas(exportRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+      });
+
+      // Convert canvas to image and download
+      const link = document.createElement('a');
+      link.download = `Bill_${bill.id}_${formatDate(bill.date).replace(/\//g, '-')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      setExporting(false);
+    } catch (error) {
+      console.error('Error exporting bill:', error);
+      alert('Có lỗi xảy ra khi xuất bill');
+      setExporting(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Đang tải...</div>;
   }
@@ -109,6 +159,23 @@ export default function BillDetail() {
         <div className="flex space-x-3">
           <button
             type="button"
+            onClick={handleExportBill}
+            disabled={exporting}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? 'Đang xuất...' : '📄 Xuất Bill'}
+          </button>
+          {!bill.parent_bill_id && (
+            <button
+              type="button"
+              onClick={() => navigate(`/bills/create?parent_id=${id}`)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              + Tạo Bill con
+            </button>
+          )}
+          <button
+            type="button"
             onClick={handleDeleteClick}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
@@ -124,20 +191,51 @@ export default function BillDetail() {
         </div>
       </div>
 
-      {/* Bill Info */}
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
+      {/* Layout 2 cột nếu có sub-bills, 1 cột nếu không */}
+      {!bill.parent_bill_id && bill.sub_bills && bill.sub_bills.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+          {/* Cột trái: Bill chính */}
+          <div className="bg-gray-50 p-4 rounded-lg shadow border-2 border-blue-200 flex flex-col">
+            <div className="mb-3 pb-3 border-b border-blue-300">
+              <h3 className="text-lg font-bold text-blue-900">Bill chính #{bill.id}</h3>
+            </div>
+            <BillContent 
+              bill={bill} 
+              showHeader={false} 
+              onMarkPayment={handleMarkPayment}
+              isMainBill={true}
+            />
+          </div>
+
+          {/* Cột phải: Bill con */}
+          <div className="space-y-4 overflow-y-auto">
+            {bill.sub_bills.map((subBill) => (
+              <div key={subBill.id} className="bg-gray-50 p-4 rounded-lg shadow border-2 border-green-200 flex flex-col">
+                <div className="mb-3 pb-3 border-b border-green-300">
+                  <h3 className="text-lg font-bold text-green-900">Bill con #{subBill.id}</h3>
+                  <p className="text-xs text-gray-600">Ngày: {formatDate(subBill.date)}</p>
+                </div>
+                <BillContent bill={subBill} showHeader={false} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Bill Info */}
+          <div className="bg-white p-6 rounded-lg shadow mb-6">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <div className="text-sm text-gray-600">Tổng tiền sân</div>
-            <div className="text-lg font-semibold">{formatCurrency(bill.court_total)}</div>
+            <div className="text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Tổng tiền cầu</div>
-            <div className="text-lg font-semibold">{formatCurrency(bill.total_shuttle_price)}</div>
+            <div className="text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Tổng tiền</div>
-            <div className="text-lg font-bold text-blue-600">{formatCurrency(bill.total_amount)}</div>
+            <div className="text-lg font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
           </div>
         </div>
         {bill.note && (
@@ -166,9 +264,9 @@ export default function BillDetail() {
                 <tr key={index} className="border-b">
                   <td className="py-2">{shuttle.shuttle_type?.name}</td>
                   <td className="text-right py-2">{shuttle.quantity}</td>
-                  <td className="text-right py-2">{formatCurrency(shuttle.price_each)}</td>
+                  <td className="text-right py-2">{formatCurrencyRounded(shuttle.price_each)}</td>
                   <td className="text-right py-2 font-semibold">
-                    {formatCurrency(shuttle.subtotal)}
+                    {formatCurrencyRounded(shuttle.subtotal)}
                   </td>
                 </tr>
               ))}
@@ -203,7 +301,7 @@ export default function BillDetail() {
                     {player.menu_extra_total > 0 ? (
                       <div className="text-right">
                         <div className="font-semibold mb-1">
-                          {formatCurrency(player.menu_extra_total)}
+                          {formatCurrencyRounded(player.menu_extra_total)}
                         </div>
                         <div className="text-xs text-gray-600 space-y-1">
                           {player.bill_player_menus?.map((menuItem, idx) => (
@@ -220,7 +318,7 @@ export default function BillDetail() {
                   <td className="text-right py-3">
                     {player.debt_amount > 0 ? (
                       <div>
-                        <div>{formatCurrency(player.debt_amount)}</div>
+                        <div>{formatCurrencyRounded(player.debt_amount)}</div>
                         {player.debt_date && (
                           <div className="text-xs text-gray-500">
                             ({formatDate(player.debt_date)})
@@ -232,7 +330,7 @@ export default function BillDetail() {
                     )}
                   </td>
                   <td className="text-right py-3 font-semibold">
-                    {formatCurrency(player.total_amount)}
+                    {formatCurrencyRounded(player.total_amount)}
                   </td>
                   <td className="text-center py-3">
                     <input
@@ -263,7 +361,7 @@ export default function BillDetail() {
               <tr className="border-t-2 font-bold">
                 <td colSpan="5" className="py-3 text-right">Tổng cộng:</td>
                 <td className="text-right py-3">
-                  {formatCurrency(
+                  {formatCurrencyRounded(
                     bill.bill_players?.reduce((sum, p) => sum + p.total_amount, 0) || 0
                   )}
                 </td>
@@ -273,6 +371,31 @@ export default function BillDetail() {
           </table>
         </div>
       </div>
+        </>
+      )}
+
+      {/* Parent Bill Info - Only show if this is a sub-bill */}
+      {bill.parent_bill_id && bill.parent_bill && (
+        <div className="bg-blue-50 p-6 rounded-lg shadow mt-6 border-2 border-blue-200">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Bill con của</h3>
+              <p className="text-sm text-gray-700">
+                Bill chính #{bill.parent_bill.id} | 
+                Ngày: {formatDate(bill.parent_bill.date)} | 
+                Tổng tiền: {formatCurrencyRounded(bill.parent_bill.total_amount)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`/bills/${bill.parent_bill.id}`)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Xem Bill chính
+            </button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         isOpen={deleteConfirm}
@@ -289,6 +412,13 @@ export default function BillDetail() {
         title="Xác nhận hủy thanh toán"
         message={`Bạn có chắc chắn muốn hủy trạng thái "Đã thanh toán" cho ${uncheckPaymentConfirm.playerName}?`}
       />
+
+      {/* Hidden export component for image generation */}
+      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+        <div ref={exportRef}>
+          <BillExport bill={bill} paymentAccounts={paymentAccounts} />
+        </div>
+      </div>
     </div>
   );
 }

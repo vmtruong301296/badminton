@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { billsApi } from '../../services/api';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrencyRounded, formatDate } from '../../utils/formatters';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 export default function Dashboard() {
@@ -131,6 +131,12 @@ export default function Dashboard() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Loại
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -149,12 +155,37 @@ export default function Dashboard() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {bills.map((bill) => (
-                <tr key={bill.id} className="hover:bg-gray-50">
+                <tr key={bill.id} className={`hover:bg-gray-50 ${bill.parent_bill_id ? 'bg-blue-50' : ''}`}>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 ${bill.parent_bill_id ? 'pl-12' : ''}`}>
+                    #{bill.id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {bill.parent_bill_id ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          Bill con
+                        </span>
+                        {bill.parent_bill && (
+                          <Link
+                            to={`/bills/${bill.parent_bill.id}`}
+                            className="text-xs text-blue-600 hover:text-blue-900 hover:underline"
+                            title="Xem bill chính"
+                          >
+                            của Bill #{bill.parent_bill.id}
+                          </Link>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                        Bill chính
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(bill.date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatCurrency(bill.total_amount)}
+                    {formatCurrencyRounded(bill.total_amount)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(bill)}`}>

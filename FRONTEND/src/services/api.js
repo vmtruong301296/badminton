@@ -53,6 +53,8 @@ export const billsApi = {
   update: (id, data) => api.put(`/bills/${id}`, data),
   delete: (id) => api.delete(`/bills/${id}`),
   markPayment: (billId, playerId, data) => api.post(`/bills/${billId}/players/${playerId}/pay`, data),
+  getSubBills: (billId) => api.get(`/bills/${billId}/sub-bills`),
+  createSubBill: (billId, data) => api.post(`/bills/${billId}/sub-bills`, data),
 };
 
 // Debts
@@ -62,6 +64,53 @@ export const debtsApi = {
   create: (data) => api.post('/debts', data),
   update: (id, data) => api.put(`/debts/${id}`, data),
   delete: (id) => api.delete(`/debts/${id}`),
+};
+
+// Payment Accounts
+export const paymentAccountsApi = {
+  getAll: (params) => api.get('/payment-accounts', { params }),
+  getById: (id) => api.get(`/payment-accounts/${id}`),
+  create: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== null && data[key] !== undefined) {
+        if (key === 'qr_code_image' && data[key] instanceof File) {
+          formData.append(key, data[key]);
+        } else if (key === 'is_active') {
+          // Convert boolean to string '1' or '0' for FormData
+          formData.append(key, data[key] ? '1' : '0');
+        } else {
+          formData.append(key, data[key]);
+        }
+      }
+    });
+    return api.post('/payment-accounts', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  update: (id, data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== null && data[key] !== undefined) {
+        if (key === 'qr_code_image' && data[key] instanceof File) {
+          formData.append(key, data[key]);
+        } else if (key === 'is_active') {
+          // Convert boolean to string '1' or '0' for FormData
+          formData.append(key, data[key] ? '1' : '0');
+        } else if (key !== 'qr_code_image') {
+          formData.append(key, data[key]);
+        }
+      }
+    });
+    // Only append qr_code_image if it's a new file
+    if (data.qr_code_image instanceof File) {
+      formData.append('qr_code_image', data.qr_code_image);
+    }
+    return api.put(`/payment-accounts/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  delete: (id) => api.delete(`/payment-accounts/${id}`),
 };
 
 export default api;

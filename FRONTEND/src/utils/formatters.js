@@ -5,6 +5,8 @@ export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 };
 
@@ -13,6 +15,16 @@ export const formatCurrency = (amount) => {
  */
 export const formatNumber = (num) => {
   return new Intl.NumberFormat('vi-VN').format(num);
+};
+
+export const roundToNearestThousand = (value) => {
+  const num = Number(value);
+  if (Number.isNaN(num)) return 0;
+  return Math.round(num / 1000) * 1000;
+};
+
+export const formatCurrencyRounded = (value) => {
+  return formatCurrency(roundToNearestThousand(value));
 };
 
 /**

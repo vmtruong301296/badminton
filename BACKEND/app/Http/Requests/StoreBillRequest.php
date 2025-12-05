@@ -26,6 +26,7 @@ class StoreBillRequest extends FormRequest
             'note' => 'nullable|string',
             'court_total' => 'required|integer|min:0',
             'court_count' => 'nullable|integer|min:1',
+            'parent_bill_id' => 'nullable|exists:bills,id',
             'shuttles' => 'required|array|min:1',
             'shuttles.*.shuttle_type_id' => 'required|exists:shuttle_types,id',
             'shuttles.*.quantity' => 'required|integer|min:1',
