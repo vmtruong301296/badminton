@@ -179,12 +179,23 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                           className="w-4 h-4 cursor-pointer"
                         />
                       ) : (
-                        <input
-                          type="checkbox"
-                          checked={player.is_paid || false}
-                          disabled
-                          className="w-4 h-4 cursor-not-allowed"
-                        />
+                        <div className="flex items-center justify-center">
+                          {player.is_paid ? (
+                            <div 
+                              className="w-4 h-4 border-2 border-blue-600 bg-blue-600 rounded flex items-center justify-center"
+                              style={{ cursor: 'not-allowed' }}
+                            >
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          ) : (
+                            <div 
+                              className="w-4 h-4 border-2 border-gray-400 bg-white rounded"
+                              style={{ cursor: 'not-allowed', opacity: 0.6 }}
+                            />
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
