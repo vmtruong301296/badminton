@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { billsApi, paymentAccountsApi } from '../../services/api';
 import { formatCurrency, formatCurrencyRounded, formatDate, formatDateDisplay, formatRatio } from '../../utils/formatters';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import PayOldBillsDialog from '../../components/common/PayOldBillsDialog';
 import BillContent from '../../components/bill/BillContent';
 import BillExport from '../../components/bill/BillExport';
 import html2canvas from 'html2canvas';
@@ -14,6 +15,7 @@ export default function BillDetail() {
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [uncheckPaymentConfirm, setUncheckPaymentConfirm] = useState({ isOpen: false, playerId: null, playerName: '' });
+  const [payOldBillsConfirm, setPayOldBillsConfirm] = useState({ isOpen: false, playerId: null, playerName: '', debtAmount: 0, oldBillIds: [] });
   const [paymentAccounts, setPaymentAccounts] = useState([]);
   const [paymentAccountImages, setPaymentAccountImages] = useState({}); // Store base64 images: { accountId: base64 }
   const [exporting, setExporting] = useState(false);
@@ -52,20 +54,76 @@ export default function BillDetail() {
       }
     }
 
-    // Nếu đang check (từ unchecked -> checked), gọi API trực tiếp
+    // Nếu đang check (từ unchecked -> checked)
+    const player = bill.bill_players?.find((p) => p.user_id === playerId);
+    if (player && player.debt_amount > 0 && isPaid) {
+      // Nếu có tiền nợ, hiển thị confirm dialog hỏi có thanh toán bill cũ không
+      const oldBillIdsSet = new Set();
+      if (player.debt_details && player.debt_details.length > 0) {
+        player.debt_details.forEach((debt) => {
+          if (debt.parent_bill_id) {
+            oldBillIdsSet.add(debt.parent_bill_id);
+          }
+          if (debt.sub_bills && debt.sub_bills.length > 0) {
+            debt.sub_bills.forEach((subBill) => {
+              if (subBill.bill_id) {
+                oldBillIdsSet.add(subBill.bill_id);
+              }
+            });
+          }
+        });
+      }
+      
+      setPayOldBillsConfirm({
+        isOpen: true,
+        playerId,
+        playerName: player.user?.name || '',
+        debtAmount: player.debt_amount,
+        oldBillIds: Array.from(oldBillIdsSet),
+      });
+      return;
+    }
+
+    // Nếu không có tiền nợ hoặc đang uncheck, gọi API trực tiếp
     await executeMarkPayment(playerId, isPaid);
   };
 
-  const executeMarkPayment = async (playerId, isPaid) => {
+  const executeMarkPayment = async (playerId, isPaid, oldBillIds = []) => {
     try {
-      const response = await billsApi.markPayment(id, playerId, {
+      // Mark payment cho bill hiện tại
+      await billsApi.markPayment(id, playerId, {
         amount: bill.bill_players.find((p) => p.user_id === playerId)?.total_amount,
         is_paid: isPaid,
       });
-      // Cập nhật state từ response thay vì reload toàn bộ trang
-      if (response.data && response.data.bill) {
-        setBill(response.data.bill);
+
+      // Nếu có bill cũ cần thanh toán, mark payment cho từng bill
+      if (oldBillIds.length > 0 && isPaid) {
+        const player = bill.bill_players?.find((p) => p.user_id === playerId);
+        if (player) {
+          // Lấy thông tin bill cũ từ debt_details để lấy bill_id và user_id
+          const promises = oldBillIds.map(async (oldBillId) => {
+            try {
+              // Lấy bill cũ để lấy user_id của player trong bill đó
+              const oldBillResponse = await billsApi.getById(oldBillId);
+              const oldBill = oldBillResponse.data;
+              const oldBillPlayer = oldBill.bill_players?.find((p) => p.user_id === playerId);
+              if (oldBillPlayer) {
+                await billsApi.markPayment(oldBillId, playerId, {
+                  amount: oldBillPlayer.total_amount,
+                  is_paid: true,
+                });
+              }
+            } catch (error) {
+              console.error(`Error marking payment for old bill ${oldBillId}:`, error);
+            }
+          });
+          await Promise.all(promises);
+        }
       }
+
+      // Reload bill để lấy đầy đủ thông tin debt_amount và debt_details được tính lại
+      // vì khi is_paid thay đổi, các bill trước đó có thể không còn được tính vào debt nữa
+      await loadBill();
     } catch (error) {
       console.error('Error marking payment:', error);
       alert('Có lỗi xảy ra');
@@ -81,6 +139,21 @@ export default function BillDetail() {
     setUncheckPaymentConfirm({ isOpen: false, playerId: null, playerName: '' });
     // Reload để đảm bảo checkbox trở về trạng thái ban đầu
     loadBill();
+  };
+
+  const handlePayOldBillsConfirm = async () => {
+    await executeMarkPayment(
+      payOldBillsConfirm.playerId,
+      true,
+      payOldBillsConfirm.oldBillIds
+    );
+    setPayOldBillsConfirm({ isOpen: false, playerId: null, playerName: '', debtAmount: 0, oldBillIds: [] });
+  };
+
+  const handlePayOldBillsCancel = async () => {
+    // Chỉ thanh toán bill hiện tại, không thanh toán bill cũ
+    await executeMarkPayment(payOldBillsConfirm.playerId, true, []);
+    setPayOldBillsConfirm({ isOpen: false, playerId: null, playerName: '', debtAmount: 0, oldBillIds: [] });
   };
 
   const handleDeleteClick = () => {
@@ -377,58 +450,64 @@ export default function BillDetail() {
         </div>
       ) : (
         <>
-          {/* Bill Info */}
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <div className="text-sm text-gray-600">Tổng tiền sân</div>
-                <div className="text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
+          {/* Bill Info và Shuttles - Layout 2 cột */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Bill Info - Bên trái */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4">Thông tin Bill</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <div className="text-sm text-gray-600">Tổng tiền sân</div>
+                  <div className="text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Tổng tiền cầu</div>
+                  <div className="text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Tổng tiền</div>
+                  <div className="text-xl font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Tổng tiền cầu</div>
-                <div className="text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Tổng tiền</div>
-                <div className="text-lg font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
-              </div>
+              {bill.note && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="text-sm text-gray-600">Ghi chú:</div>
+                  <div className="text-gray-900">{bill.note}</div>
+                </div>
+              )}
             </div>
-            {bill.note && (
-              <div className="mt-4 pt-4 border-t">
-                <div className="text-sm text-gray-600">Ghi chú:</div>
-                <div className="text-gray-900">{bill.note}</div>
+
+            {/* Shuttles - Bên phải */}
+            {bill.bill_shuttles && bill.bill_shuttles.length > 0 && (
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-4">Chi tiết cầu</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Loại cầu</th>
+                        <th className="text-right py-2">Số lượng</th>
+                        <th className="text-right py-2">Đơn giá</th>
+                        <th className="text-right py-2">Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bill.bill_shuttles.map((shuttle, index) => (
+                        <tr key={index} className="border-b">
+                          <td className="py-2">{shuttle.shuttle_type?.name}</td>
+                          <td className="text-right py-2">{shuttle.quantity}</td>
+                          <td className="text-right py-2">{formatCurrencyRounded(shuttle.price_each)}</td>
+                          <td className="text-right py-2 font-semibold">
+                            {formatCurrencyRounded(shuttle.subtotal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Shuttles */}
-          {bill.bill_shuttles && bill.bill_shuttles.length > 0 && (
-            <div className="bg-white p-6 rounded-lg shadow mb-6">
-              <h3 className="text-lg font-semibold mb-4">Chi tiết cầu</h3>
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2">Loại cầu</th>
-                    <th className="text-right py-2">Số lượng</th>
-                    <th className="text-right py-2">Đơn giá</th>
-                    <th className="text-right py-2">Thành tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bill.bill_shuttles.map((shuttle, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="py-2">{shuttle.shuttle_type?.name}</td>
-                      <td className="text-right py-2">{shuttle.quantity}</td>
-                      <td className="text-right py-2">{formatCurrencyRounded(shuttle.price_each)}</td>
-                      <td className="text-right py-2 font-semibold">
-                        {formatCurrencyRounded(shuttle.subtotal)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
           {/* Players Table */}
           <div className="bg-white p-6 rounded-lg shadow">
@@ -582,6 +661,15 @@ export default function BillDetail() {
         onConfirm={handleUncheckPaymentConfirm}
         title="Xác nhận hủy thanh toán"
         message={`Bạn có chắc chắn muốn hủy trạng thái "Đã thanh toán" cho ${uncheckPaymentConfirm.playerName}?`}
+      />
+
+      <PayOldBillsDialog
+        isOpen={payOldBillsConfirm.isOpen}
+        onClose={() => setPayOldBillsConfirm({ isOpen: false, playerId: null, playerName: '', debtAmount: 0, oldBillIds: [] })}
+        onPayCurrentOnly={handlePayOldBillsCancel}
+        onPayAll={handlePayOldBillsConfirm}
+        playerName={payOldBillsConfirm.playerName}
+        debtAmount={payOldBillsConfirm.debtAmount}
       />
 
       {/* Hidden export component for image generation */}

@@ -294,6 +294,7 @@ class BillController extends Controller
                     $dateDebt += $billsGroup['parent']['amount'];
                     $totalDebt += $billsGroup['parent']['amount'];
                     $detail['parent_amount'] = $billsGroup['parent']['amount'];
+                    $detail['parent_bill_id'] = $billsGroup['parent']['bill_id'];
                 }
                 
                 // Add sub-bills debts
@@ -303,6 +304,7 @@ class BillController extends Controller
                     $detail['sub_bills'][] = [
                         'note' => $subBill['note'],
                         'amount' => $subBill['amount'],
+                        'bill_id' => $subBill['bill_id'],
                     ];
                 }
                 
