@@ -1,6 +1,6 @@
 import { formatCurrencyRounded, formatDate, formatDateDisplay, formatRatio } from '../../utils/formatters';
 
-export default function BillContent({ bill, showHeader = true, onMarkPayment, isMainBill = false }) {
+export default function BillContent({ bill, showHeader = true, onMarkPayment, isMainBill = false, subBills = null }) {
   if (!bill) return null;
 
   return (
@@ -75,6 +75,9 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                   <th className="text-right py-1">Chi phí thêm</th>
                   <th className="text-right py-1">Tiền nợ</th>
                   <th className="text-right py-1">Tổng tiền</th>
+                  {subBills && subBills.length > 0 && (
+                    <th className="text-right py-1">TT 2 bill</th>
+                  )}
                   <th className="text-center py-1">Đã TT</th>
                 </tr>
               </thead>
@@ -133,8 +136,33 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                       )}
                     </td>
                     <td className="text-right py-2 font-semibold">
-                      {formatCurrencyRounded((player.total_amount || 0) + (player.debt_amount || 0))}
+                      {(() => {
+                        // Giá trị cột "Tổng tiền" = total_amount + debt_amount
+                        return formatCurrencyRounded((player.total_amount || 0) + (player.debt_amount || 0));
+                      })()}
                     </td>
+                    {subBills && subBills.length > 0 && (
+                      <td className="text-right py-2 font-semibold text-green-600">
+                        {(() => {
+                          // Lấy giá trị cột "Tổng tiền" trong bill chính (total_amount + debt_amount)
+                          const mainBillTotalAmount = (player.total_amount || 0) + (player.debt_amount || 0);
+                          
+                          // Lấy tổng giá trị cột "Tổng tiền" trong tất cả bill phụ
+                          const subBillsTotalAmount = subBills.reduce((sum, subBill) => {
+                            const subBillPlayer = subBill.bill_players?.find((p) => p.user_id === player.user_id);
+                            if (subBillPlayer) {
+                              // Giá trị cột "Tổng tiền" của player trong bill phụ
+                              const subBillTotalAmount = (subBillPlayer.total_amount || 0) + (subBillPlayer.debt_amount || 0);
+                              return sum + subBillTotalAmount;
+                            }
+                            return sum;
+                          }, 0);
+                          
+                          // Tổng tiền 2 bill = Tổng tiền bill chính + Tổng tiền bill phụ
+                          return formatCurrencyRounded(mainBillTotalAmount + subBillsTotalAmount);
+                        })()}
+                      </td>
+                    )}
                     <td className="text-center py-2">
                       {isMainBill && onMarkPayment ? (
                         <input
@@ -170,6 +198,30 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                       bill.bill_players?.reduce((sum, p) => sum + (p.total_amount || 0) + (p.debt_amount || 0), 0) || 0
                     )}
                   </td>
+                  {subBills && subBills.length > 0 && (
+                    <td className="text-right py-2 text-green-600">
+                      {formatCurrencyRounded(
+                        bill.bill_players?.reduce((sum, p) => {
+                          // Lấy giá trị cột "Tổng tiền" trong bill chính
+                          const mainBillTotalAmount = (p.total_amount || 0) + (p.debt_amount || 0);
+                          
+                          // Lấy tổng giá trị cột "Tổng tiền" trong tất cả bill phụ
+                          const subBillsTotalAmount = subBills.reduce((subSum, subBill) => {
+                            const subBillPlayer = subBill.bill_players?.find((sp) => sp.user_id === p.user_id);
+                            if (subBillPlayer) {
+                              // Giá trị cột "Tổng tiền" của player trong bill phụ
+                              const subBillTotalAmount = (subBillPlayer.total_amount || 0) + (subBillPlayer.debt_amount || 0);
+                              return subSum + subBillTotalAmount;
+                            }
+                            return subSum;
+                          }, 0);
+                          
+                          // Tổng tiền 2 bill = Tổng tiền bill chính + Tổng tiền bill phụ
+                          return sum + mainBillTotalAmount + subBillsTotalAmount;
+                        }, 0) || 0
+                      )}
+                    </td>
+                  )}
                   <td></td>
                 </tr>
               </tfoot>
