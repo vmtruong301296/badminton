@@ -227,6 +227,47 @@ class BillController extends Controller
         ])
             ->findOrFail($id);
 
+        // Calculate debts from previous bills for each player
+        foreach ($bill->billPlayers as $billPlayer) {
+            $userId = $billPlayer->user_id;
+            
+            // Get all previous bills (date < current bill date) where this player hasn't paid
+            $previousBills = Bill::where('date', '<', $bill->date)
+                ->whereHas('billPlayers', function ($query) use ($userId) {
+                    $query->where('user_id', $userId)
+                        ->where('is_paid', false);
+                })
+                ->with(['billPlayers' => function ($query) use ($userId) {
+                    $query->where('user_id', $userId);
+                }])
+                ->orderBy('date', 'asc')
+                ->get();
+
+            // Calculate total debt and debt details by date
+            $totalDebt = 0;
+            $debtDetails = [];
+            
+            foreach ($previousBills as $prevBill) {
+                $prevBillPlayer = $prevBill->billPlayers->first();
+                if ($prevBillPlayer && !$prevBillPlayer->is_paid) {
+                    $debtAmount = $prevBillPlayer->total_amount;
+                    $totalDebt += $debtAmount;
+                    $debtDetails[] = [
+                        'date' => $prevBill->date->format('Y-m-d'),
+                        'amount' => $debtAmount,
+                        'bill_id' => $prevBill->id,
+                    ];
+                }
+            }
+
+            // Update billPlayer with calculated debt
+            $billPlayer->debt_amount = $totalDebt;
+            $billPlayer->debt_details = $debtDetails;
+            if (count($debtDetails) > 0) {
+                $billPlayer->debt_date = $debtDetails[0]['date']; // Latest debt date
+            }
+        }
+
         return response()->json($bill);
     }
 

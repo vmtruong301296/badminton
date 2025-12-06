@@ -476,10 +476,14 @@ export default function BillDetail() {
                       <td className="text-right py-3">
                         {player.debt_amount > 0 ? (
                           <div>
-                            <div>{formatCurrencyRounded(player.debt_amount)}</div>
-                            {player.debt_date && (
-                              <div className="text-xs text-gray-500">
-                                ({formatDate(player.debt_date)})
+                            <div className="font-semibold mb-1">{formatCurrencyRounded(player.debt_amount)}</div>
+                            {player.debt_details && player.debt_details.length > 0 && (
+                              <div className="text-xs text-gray-600 space-y-1">
+                                {player.debt_details.map((debt, idx) => (
+                                  <div key={idx} className="text-right">
+                                    {formatDate(debt.date)}: {formatCurrencyRounded(debt.amount)}
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
