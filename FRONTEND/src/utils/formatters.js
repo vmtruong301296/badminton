@@ -35,7 +35,7 @@ export const parseCurrency = (str) => {
 };
 
 /**
- * Format date to YYYY-MM-DD
+ * Format date to YYYY-MM-DD (for input fields)
  */
 export const formatDate = (date) => {
   if (!date) return '';
@@ -44,6 +44,18 @@ export const formatDate = (date) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+/**
+ * Format date to dd/mm/yyyy (for display)
+ */
+export const formatDateDisplay = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${day}/${month}/${year}`;
 };
 
 /**

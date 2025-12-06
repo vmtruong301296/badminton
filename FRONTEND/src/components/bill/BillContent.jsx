@@ -1,4 +1,4 @@
-import { formatCurrencyRounded, formatDate, formatRatio } from '../../utils/formatters';
+import { formatCurrencyRounded, formatDate, formatDateDisplay, formatRatio } from '../../utils/formatters';
 
 export default function BillContent({ bill, showHeader = true, onMarkPayment, isMainBill = false }) {
   if (!bill) return null;
@@ -110,10 +110,19 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                         <div>
                           <div className="font-semibold mb-1">{formatCurrencyRounded(player.debt_amount)}</div>
                           {player.debt_details && player.debt_details.length > 0 && (
-                            <div className="text-xs text-gray-600 space-y-1">
+                            <div className="text-xs text-gray-600 space-y-2">
                               {player.debt_details.map((debt, idx) => (
-                                <div key={idx} className="text-right">
-                                  {formatDate(debt.date)}: {formatCurrencyRounded(debt.amount)}
+                                <div key={idx} className="text-right border border-gray-300 rounded p-1.5 bg-gray-50">
+                                  {debt.parent_amount !== null && (
+                                    <div className="font-medium">
+                                      {formatDateDisplay(debt.date)}: {formatCurrencyRounded(debt.parent_amount)}
+                                    </div>
+                                  )}
+                                  {debt.sub_bills && debt.sub_bills.length > 0 && debt.sub_bills.map((subBill, subIdx) => (
+                                    <div key={subIdx} className="pl-2 mt-0.5">
+                                      {subBill.note || 'Bill con'}: {formatCurrencyRounded(subBill.amount)}
+                                    </div>
+                                  ))}
                                 </div>
                               ))}
                             </div>
@@ -124,7 +133,7 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                       )}
                     </td>
                     <td className="text-right py-2 font-semibold">
-                      {formatCurrencyRounded(player.total_amount)}
+                      {formatCurrencyRounded((player.total_amount || 0) + (player.debt_amount || 0))}
                     </td>
                     <td className="text-center py-2">
                       {isMainBill && onMarkPayment ? (
@@ -158,7 +167,7 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                   <td colSpan="5" className="py-2 text-right">Tổng cộng:</td>
                   <td className="text-right py-2">
                     {formatCurrencyRounded(
-                      bill.bill_players?.reduce((sum, p) => sum + p.total_amount, 0) || 0
+                      bill.bill_players?.reduce((sum, p) => sum + (p.total_amount || 0) + (p.debt_amount || 0), 0) || 0
                     )}
                   </td>
                   <td></td>

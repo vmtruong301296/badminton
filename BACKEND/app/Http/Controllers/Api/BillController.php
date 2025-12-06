@@ -239,24 +239,76 @@ class BillController extends Controller
                 })
                 ->with(['billPlayers' => function ($query) use ($userId) {
                     $query->where('user_id', $userId);
-                }])
-                ->orderBy('date', 'asc')
+                }, 'parentBill'])
+                ->orderBy('date', 'desc')
                 ->get();
 
-            // Calculate total debt and debt details by date
-            $totalDebt = 0;
-            $debtDetails = [];
-            
+            // Group bills by date and separate parent bills from sub-bills
+            $billsByDate = [];
             foreach ($previousBills as $prevBill) {
                 $prevBillPlayer = $prevBill->billPlayers->first();
                 if ($prevBillPlayer && !$prevBillPlayer->is_paid) {
-                    $debtAmount = $prevBillPlayer->total_amount;
-                    $totalDebt += $debtAmount;
-                    $debtDetails[] = [
-                        'date' => $prevBill->date->format('Y-m-d'),
-                        'amount' => $debtAmount,
-                        'bill_id' => $prevBill->id,
+                    $dateKey = $prevBill->date->format('Y-m-d');
+                    
+                    if (!isset($billsByDate[$dateKey])) {
+                        $billsByDate[$dateKey] = [
+                            'parent' => null,
+                            'sub_bills' => [],
+                        ];
+                    }
+                    
+                    // If it's a sub-bill (has parent_bill_id)
+                    if ($prevBill->parent_bill_id) {
+                        $billsByDate[$dateKey]['sub_bills'][] = [
+                            'amount' => $prevBillPlayer->total_amount,
+                            'bill_id' => $prevBill->id,
+                            'note' => $prevBill->note ?? '',
+                        ];
+                    } else {
+                        // It's a parent bill
+                        $billsByDate[$dateKey]['parent'] = [
+                            'amount' => $prevBillPlayer->total_amount,
+                            'bill_id' => $prevBill->id,
+                        ];
+                    }
+                }
+            }
+
+            // Calculate total debt and format debt details
+            $totalDebt = 0;
+            $debtDetails = [];
+            
+            // Sort dates in descending order (newest first)
+            krsort($billsByDate);
+            
+            foreach ($billsByDate as $date => $billsGroup) {
+                $dateDebt = 0;
+                $detail = [
+                    'date' => $date,
+                    'parent_amount' => null,
+                    'sub_bills' => [],
+                ];
+                
+                // Add parent bill debt
+                if ($billsGroup['parent']) {
+                    $dateDebt += $billsGroup['parent']['amount'];
+                    $totalDebt += $billsGroup['parent']['amount'];
+                    $detail['parent_amount'] = $billsGroup['parent']['amount'];
+                }
+                
+                // Add sub-bills debts
+                foreach ($billsGroup['sub_bills'] as $subBill) {
+                    $dateDebt += $subBill['amount'];
+                    $totalDebt += $subBill['amount'];
+                    $detail['sub_bills'][] = [
+                        'note' => $subBill['note'],
+                        'amount' => $subBill['amount'],
                     ];
+                }
+                
+                // Only add to details if there's debt for this date
+                if ($dateDebt > 0) {
+                    $debtDetails[] = $detail;
                 }
             }
 
