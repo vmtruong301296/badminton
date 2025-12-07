@@ -158,7 +158,12 @@ export default function PlayerSelector({ selectedPlayers, onSelect, onRemove }) 
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-medium text-gray-900">{player.name}</div>
+                      <div className="font-medium text-gray-900">
+                        {player.name}
+                        {player.bill_count !== undefined && player.bill_count > 0 && (
+                          <span className="text-gray-500 font-normal ml-1">({player.bill_count})</span>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-500 flex items-center gap-3">
                         <span>
                           {player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'} : <span className="font-semibold">{formatRatio(player.default_ratio_value || 1.0)}</span>
@@ -194,24 +199,22 @@ export default function PlayerSelector({ selectedPlayers, onSelect, onRemove }) 
                 key={player.user_id || index}
                 className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div className="flex-1 flex items-center gap-3 flex-wrap">
                     <div className="font-semibold text-gray-900">{player.name}</div>
-                    <div className="text-xs text-gray-600 mt-1 space-y-1">
-                      <div>
-                        Mức tính: <span className="font-medium">{formatRatio(player.ratio_value ?? player.default_ratio_value ?? 1.0)}</span>
-                      </div>
-                      {player.debt_amount > 0 && player.include_debt && (
-                        <div className="text-red-600">
-                          Nợ: {formatCurrency(player.debt_amount)}
-                        </div>
-                      )}
-                      {player.menus && player.menus.length > 0 && (
-                        <div className="text-green-600">
-                          Menu: {player.menus.length} món
-                        </div>
-                      )}
+                    <div className="text-xs text-gray-500">
+                      {player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'} : <span className="font-semibold">{formatRatio(player.ratio_value ?? player.default_ratio_value ?? 1.0)}</span>
                     </div>
+                    {player.menus && player.menus.length > 0 && (
+                      <div className="text-xs text-green-600">
+                        Menu: {player.menus.length} món
+                      </div>
+                    )}
+                    {player.debt_amount > 0 && player.include_debt && (
+                      <div className="text-xs text-red-600">
+                        Nợ: {formatCurrency(player.debt_amount)}
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"

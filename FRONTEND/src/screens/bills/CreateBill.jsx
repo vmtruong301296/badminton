@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { billsApi, playersApi, shuttlesApi } from '../../services/api';
-import { calculateBillPreview, formatCurrency, formatCurrencyRounded, formatDate, formatRatio } from '../../utils/formatters';
+import { billsApi, shuttlesApi } from '../../services/api';
+import { calculateBillPreview, formatCurrencyRounded, formatDate, formatRatio } from '../../utils/formatters';
 import CurrencyInput from '../../components/common/CurrencyInput';
 import NumberInput from '../../components/common/NumberInput';
 import DatePicker from '../../components/common/DatePicker';
@@ -102,7 +102,7 @@ export default function CreateBill() {
         ...p,
         ratio_value: p.ratio_value ?? p.default_ratio_value ?? 1.0,
         menus: p.menus || [],
-        debt_amount: p.include_debt ? (p.debt_amount || 0) : 0,
+        debt_amount: 0,
       }))
     );
     setPreview({
@@ -154,22 +154,6 @@ export default function CreateBill() {
     setFormData({ ...formData, players: newPlayers });
   };
 
-  const handleLoadPlayerDebt = async (playerIndex) => {
-    const player = formData.players[playerIndex];
-    try {
-      const response = await playersApi.getDebts(player.user_id);
-      const totalDebt = response.data.total_debt || 0;
-      const latestDebt = response.data.debts?.[0];
-      
-      handleUpdatePlayer(playerIndex, {
-        ...player,
-        debt_amount: totalDebt,
-        debt_date: latestDebt?.debt_date,
-      });
-    } catch (error) {
-      console.error('Error loading player debt:', error);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -262,65 +246,68 @@ export default function CreateBill() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Basic Info */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4">Thông tin cơ bản</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày đánh *
-                  </label>
-                  <DatePicker
-                    value={formData.date}
-                    onChange={(value) => setFormData({ ...formData, date: value })}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng tiền sân (VND) *
-                  </label>
-                  <CurrencyInput
-                    value={formData.court_total}
-                    onChange={(value) => setFormData({ ...formData, court_total: value })}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ghi chú
-                  </label>
-                  <textarea
-                    value={formData.note}
-                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows={1}
-                  />
+            {/* Basic Info and Shuttles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Basic Info - Bên trái */}
+              <div className="bg-white p-6 rounded-lg shadow md:col-span-1">
+                <h3 className="text-lg font-semibold mb-4">Thông tin cơ bản</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ngày đánh *
+                    </label>
+                    <DatePicker
+                      value={formData.date}
+                      onChange={(value) => setFormData({ ...formData, date: value })}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tổng tiền sân (VND) *
+                    </label>
+                    <CurrencyInput
+                      value={formData.court_total}
+                      onChange={(value) => setFormData({ ...formData, court_total: value })}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ghi chú
+                    </label>
+                    <textarea
+                      value={formData.note}
+                      onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      rows={1}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Shuttles */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Loại cầu</h3>
-                <button
-                  type="button"
-                  onClick={handleAddShuttle}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  + Thêm cầu
-                </button>
-              </div>
-              <div className="space-y-4">
-                {formData.shuttles.map((shuttle, index) => (
-                  <ShuttleRow
-                    key={index}
-                    shuttle={shuttle}
-                    onUpdate={(updated) => handleUpdateShuttle(index, updated)}
-                    onRemove={() => handleRemoveShuttle(index)}
-                  />
-                ))}
+              {/* Shuttles - Bên phải */}
+              <div className="bg-white p-6 rounded-lg shadow md:col-span-2">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Loại cầu</h3>
+                  <button
+                    type="button"
+                    onClick={handleAddShuttle}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  >
+                    + Thêm cầu
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {formData.shuttles.map((shuttle, index) => (
+                    <ShuttleRow
+                      key={index}
+                      shuttle={shuttle}
+                      onUpdate={(updated) => handleUpdateShuttle(index, updated)}
+                      onRemove={() => handleRemoveShuttle(index)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -346,79 +333,46 @@ export default function CreateBill() {
                   <div className="space-y-4">
                     {formData.players.map((player, index) => (
                       <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-semibold text-lg">{player.name}</h4>
-                            <button
-                              type="button"
-                              onClick={() => handleLoadPlayerDebt(index)}
-                              className="text-sm text-blue-600 hover:underline mt-1"
-                            >
-                              🔄 Tải lại nợ
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Mức tính (override)
-                            </label>
-                            <NumberInput
-                              value={player.ratio_value ?? player.default_ratio_value ?? 1.0}
-                              onChange={(value) =>
-                                handleUpdatePlayer(index, { ...player, ratio_value: value })
-                              }
-                              min={0}
-                              step={0.1}
-                              className="w-full"
-                            />
-                            <div className="text-xs text-gray-500 mt-1">
-                              Mặc định: {formatRatio(player.default_ratio_value ?? 1.0)}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          {/* Bên trái: Tên, giới tính, mức tính */}
+                          <div className="md:col-span-1">
+                            <div className="mb-4">
+                              <h4 className="font-semibold text-lg text-gray-900 mb-2">{player.name}</h4>
+                              <div className="text-sm text-gray-600 mb-3">
+                                <span className="mr-3">
+                                  Giới tính: <span className="font-medium">{player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'}</span>
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Mức tính (override)
+                              </label>
+                              <NumberInput
+                                value={player.ratio_value ?? player.default_ratio_value ?? 1.0}
+                                onChange={(value) =>
+                                  handleUpdatePlayer(index, { ...player, ratio_value: value })
+                                }
+                                min={0}
+                                step={0.1}
+                                className="w-full"
+                              />
+                              <div className="text-xs text-gray-500 mt-1">
+                                Mặc định: {formatRatio(player.default_ratio_value ?? 1.0)}
+                              </div>
                             </div>
                           </div>
 
-                          <div>
-                            <label className="flex items-center mb-2">
-                              <input
-                                type="checkbox"
-                                checked={player.include_debt || false}
-                                onChange={(e) =>
-                                  handleUpdatePlayer(index, {
-                                    ...player,
-                                    include_debt: e.target.checked,
-                                  })
-                                }
-                                className="mr-2"
-                              />
-                              <span className="text-sm font-medium">Bao gồm nợ cũ</span>
+                          {/* Bên phải: Menu nước */}
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Menu nước
                             </label>
-                            {player.include_debt && player.debt_amount > 0 && (
-                              <div className="text-sm text-gray-600 bg-red-50 p-2 rounded">
-                                <span className="font-medium">Nợ hiện tại:</span> {formatCurrency(player.debt_amount)}
-                                {player.debt_date && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    Ngày nợ: {player.debt_date}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {!player.include_debt && player.debt_amount > 0 && (
-                              <div className="text-xs text-gray-500">
-                                Có nợ: {formatCurrency(player.debt_amount)} (chưa chọn bao gồm)
-                              </div>
-                            )}
+                            <MenuItemPicker
+                              player={player}
+                              onUpdate={(updated) => handleUpdatePlayer(index, updated)}
+                            />
                           </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Menu nước
-                          </label>
-                          <MenuItemPicker
-                            player={player}
-                            onUpdate={(updated) => handleUpdatePlayer(index, updated)}
-                          />
                         </div>
                       </div>
                     ))}

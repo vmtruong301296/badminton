@@ -18,7 +18,15 @@ class UserController extends Controller
     {
         $query = User::with(['debts' => function ($query) {
             $query->where('is_resolved', false);
-        }]);
+        }])
+        ->withCount([
+            'billPlayers as bill_count' => function ($query) {
+                $query->whereHas('bill', function ($q) {
+                    $q->whereNull('parent_bill_id');
+                });
+            }
+        ])
+        ->orderBy('bill_count', 'desc');
 
         // Filter by gender
         if ($request->has('gender')) {
