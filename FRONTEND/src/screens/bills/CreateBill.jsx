@@ -265,7 +265,7 @@ export default function CreateBill() {
             {/* Basic Info */}
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-4">Thông tin cơ bản</h3>
-              <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Ngày đánh *
@@ -294,7 +294,7 @@ export default function CreateBill() {
                     value={formData.note}
                     onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows={3}
+                    rows={1}
                   />
                 </div>
               </div>

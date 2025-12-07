@@ -49,21 +49,36 @@ export default function BillSummary({ preview }) {
         )}
 
         <div className="mt-4 pt-4 border-t">
-          <div className="text-sm font-medium mb-2">Chi tiết từng người:</div>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="text-sm font-medium mb-2">
+            Chi tiết từng người <span className="text-gray-600">({preview.players?.length || 0})</span>
+          </div>
+          <div className="space-y-2 max-h-[48rem] overflow-y-auto">
             {preview.players?.map((player, index) => (
               <div key={index} className="text-sm bg-gray-50 p-2 rounded">
-                <div className="font-medium">{player.name}</div>
-                <div className="text-xs text-gray-600 space-y-1 mt-1">
-                  <div>Share: {formatCurrencyRounded(player.share_amount || 0)}</div>
-                  {player.menu_extra_total > 0 && (
-                    <div>Menu: {formatCurrencyRounded(player.menu_extra_total)}</div>
-                  )}
-                  {player.debt_amount > 0 && (
-                    <div>Nợ: {formatCurrencyRounded(player.debt_amount)}</div>
-                  )}
-                  <div className="font-semibold pt-1 border-t">
-                    Tổng: {formatCurrencyRounded(player.total_amount || 0)}
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-gray-500 font-medium">{index + 1}.</span>
+                    <span className="font-medium">{player.name}</span>
+                    {player.gender && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        player.gender === 'male' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-pink-100 text-pink-700'
+                      }`}>
+                        {player.gender === 'male' ? 'Nam' : 'Nữ'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-600 text-right flex-shrink-0">
+                    {player.menu_extra_total > 0 && (
+                      <div>Menu: {formatCurrencyRounded(player.menu_extra_total)}</div>
+                    )}
+                    {player.debt_amount > 0 && (
+                      <div>Nợ: {formatCurrencyRounded(player.debt_amount)}</div>
+                    )}
+                    <div className="font-semibold pt-1 border-t mt-1">
+                      Tổng: {formatCurrencyRounded(player.total_amount || 0)}
+                    </div>
                   </div>
                 </div>
               </div>

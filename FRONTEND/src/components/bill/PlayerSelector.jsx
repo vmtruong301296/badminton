@@ -29,9 +29,23 @@ export default function PlayerSelector({ selectedPlayers, onSelect, onRemove }) 
     }
   };
 
+  // Hàm loại bỏ dấu tiếng Việt
+  const removeVietnameseTones = (str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  };
+
   const filteredPlayers = players.filter((p) => {
     const isSelected = selectedPlayers.some((sp) => sp.user_id === p.id);
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    if (!search.trim()) {
+      return !isSelected;
+    }
+    const searchNoTones = removeVietnameseTones(search.toLowerCase());
+    const playerNameNoTones = removeVietnameseTones(p.name.toLowerCase());
+    const matchesSearch = playerNameNoTones.includes(searchNoTones);
     return !isSelected && matchesSearch;
   });
 
@@ -39,6 +53,7 @@ export default function PlayerSelector({ selectedPlayers, onSelect, onRemove }) 
     onSelect({
       user_id: player.id,
       name: player.name,
+      gender: player.gender,
       ratio_value: player.default_ratio_value || 1.0,
       default_ratio_value: player.default_ratio_value || 1.0,
       debt_amount: player.current_debt_amount || 0,
@@ -89,6 +104,7 @@ export default function PlayerSelector({ selectedPlayers, onSelect, onRemove }) 
       handleSelect({
         id: response.data.id,
         name: response.data.name,
+        gender: response.data.gender,
         default_ratio_value: response.data.default_ratio ?? newPlayer.default_ratio ?? 1,
         current_debt_amount: 0,
         debt_date: null,
@@ -132,23 +148,27 @@ export default function PlayerSelector({ selectedPlayers, onSelect, onRemove }) 
               </div>
             ) : (
               <div className="space-y-1">
-                {filteredPlayers.map((player) => (
+                {filteredPlayers.map((player, index) => (
                   <button
                     key={player.id}
                     type="button"
                     onClick={() => handleSelect(player)}
-                    className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded border border-transparent hover:border-blue-200 transition-colors bg-white"
+                    className={`w-full text-left px-3 py-2 hover:bg-blue-100 rounded border border-transparent hover:border-blue-300 transition-colors ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+                    }`}
                   >
-                    <div className="font-medium text-gray-900">{player.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      <span className="inline-block mr-3">
-                        Mức tính: <span className="font-semibold">{formatRatio(player.default_ratio_value || 1.0)}</span>
-                      </span>
-                      {player.current_debt_amount > 0 && (
-                        <span className="text-red-600">
-                          Nợ: {formatCurrency(player.current_debt_amount)}
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-gray-900">{player.name}</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-3">
+                        <span>
+                          {player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'} : <span className="font-semibold">{formatRatio(player.default_ratio_value || 1.0)}</span>
                         </span>
-                      )}
+                        {player.current_debt_amount > 0 && (
+                          <span className="text-red-600">
+                            Nợ: {formatCurrency(player.current_debt_amount)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))}
