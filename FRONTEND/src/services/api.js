@@ -70,70 +70,8 @@ export const debtsApi = {
 export const paymentAccountsApi = {
   getAll: (params) => api.get('/payment-accounts', { params }),
   getById: (id) => api.get(`/payment-accounts/${id}`),
-  create: (data) => {
-    const formData = new FormData();
-    
-    Object.keys(data).forEach((key) => {
-      if (data[key] !== null && data[key] !== undefined) {
-        if (key === 'qr_code_image') {
-          // Only append if it's a File object
-          if (data[key] instanceof File) {
-            formData.append(key, data[key]);
-            console.log('API create - Sending file:', data[key].name, `(${data[key].size} bytes)`);
-          }
-          // If not a File, don't send this field
-        } else if (key === 'is_active') {
-          // Convert boolean to string '1' or '0' for FormData
-          formData.append(key, data[key] ? '1' : '0');
-        } else {
-          formData.append(key, data[key]);
-        }
-      }
-    });
-    
-    // Use axios directly to avoid default headers interfering with FormData
-    // Create a new axios instance without default Content-Type header for this request
-    const axiosInstance = axios.create({
-      baseURL: '/api',
-    });
-    
-    return axiosInstance.post('/payment-accounts', formData);
-  },
-  update: (id, data) => {
-    const formData = new FormData();
-    
-    Object.keys(data).forEach((key) => {
-      // Handle qr_code_image - only append if it's a File object (new file selected)
-      if (key === 'qr_code_image') {
-        if (data[key] instanceof File) {
-          formData.append(key, data[key]);
-          console.log('API update - Sending new file:', data[key].name, `(${data[key].size} bytes)`);
-        }
-        // If not a File, don't send this field (Laravel will keep existing image)
-        return;
-      }
-      
-      // Append other fields
-      if (data[key] !== null && data[key] !== undefined) {
-        if (key === 'is_active') {
-          // Convert boolean to string '1' or '0' for FormData
-          formData.append(key, data[key] ? '1' : '0');
-        } else {
-          formData.append(key, data[key]);
-        }
-      }
-    });
-    
-    // Laravel doesn't parse FormData well with PUT requests
-    // Use POST route instead
-    // Use axios directly to avoid default headers interfering with FormData
-    // Create a new axios instance without default Content-Type header for this request
-    const axiosInstance = axios.create({
-      baseURL: '/api',
-    });
-    
-    return axiosInstance.post(`/payment-accounts/${id}/update`, formData);
-  },
+  create: (data) => api.post('/payment-accounts', data),
+  update: (id, data) => api.put(`/payment-accounts/${id}`, data),
   delete: (id) => api.delete(`/payment-accounts/${id}`),
 };
 

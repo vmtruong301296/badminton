@@ -72,6 +72,30 @@ export default function Dashboard() {
     return 'Chưa thanh toán';
   };
 
+  // Check if bill is overdue (more than 1 week) and has unpaid players
+  const isOverdueWarning = (bill) => {
+    if (!bill.date) return false;
+    
+    const billDate = new Date(bill.date);
+    billDate.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    // Calculate difference in days
+    const diffTime = today - billDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Check if bill is more than 7 days old (quá hạn 1 tuần lễ)
+    const isOverdue = diffDays > 7;
+    
+    // Check if there are unpaid players
+    const unpaidCount = bill.bill_players?.filter(p => !p.is_paid).length || 0;
+    const hasUnpaidPlayers = unpaidCount > 0;
+    
+    return isOverdue && hasUnpaidPlayers;
+  };
+
   const handleDeleteClick = (billId) => {
     setDeleteConfirm({ isOpen: true, billId });
   };
@@ -225,8 +249,19 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {bills.map((bill) => (
-                <tr key={bill.id} className={`hover:bg-gray-50 ${bill.parent_bill_id ? 'bg-blue-50' : ''}`}>
+              {bills.map((bill) => {
+                const isWarning = isOverdueWarning(bill);
+                return (
+                <tr 
+                  key={bill.id} 
+                  className={`hover:bg-gray-50 ${
+                    isWarning 
+                      ? 'bg-red-100 hover:bg-red-200' 
+                      : bill.parent_bill_id 
+                        ? 'bg-blue-50' 
+                        : ''
+                  }`}
+                >
                   <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 ${bill.parent_bill_id ? 'pl-12' : ''}`}>
                     #{bill.id}
                   </td>
@@ -284,9 +319,24 @@ export default function Dashboard() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
+          
+          {/* Legend/Chú thích */}
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+                <span className="text-gray-700">Bill quá hạn 1 tuần và còn người chưa thanh toán</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
+                <span className="text-gray-700">Bill con</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

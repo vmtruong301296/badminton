@@ -25,7 +25,7 @@ class StorePaymentAccountRequest extends FormRequest
             'bank_name' => 'required|string|max:255',
             'account_number' => 'required|string|max:255',
             'account_holder_name' => 'required|string|max:255',
-            'qr_code_image' => 'nullable|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'qr_code_image' => 'nullable|string',
             'is_active' => 'nullable',
             'note' => 'nullable|string',
         ];

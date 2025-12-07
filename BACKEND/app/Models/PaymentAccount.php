@@ -21,15 +21,4 @@ class PaymentAccount extends Model
             'is_active' => 'boolean',
         ];
     }
-
-    /**
-     * Get the full URL for the QR code image.
-     */
-    public function getQrCodeImageUrlAttribute()
-    {
-        if (!$this->qr_code_image) {
-            return null;
-        }
-        return asset('storage/' . $this->qr_code_image);
-    }
 }

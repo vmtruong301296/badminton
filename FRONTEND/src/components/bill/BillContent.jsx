@@ -82,7 +82,29 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                 </tr>
               </thead>
               <tbody>
-                {bill.bill_players?.map((player, index) => (
+                {(() => {
+                  // Sort players: unpaid males -> unpaid females -> paid males -> paid females
+                  const sortedPlayers = [...(bill.bill_players || [])].sort((a, b) => {
+                    const aIsPaid = a.is_paid || false;
+                    const bIsPaid = b.is_paid || false;
+                    const aGender = a.user?.gender || '';
+                    const bGender = b.user?.gender || '';
+                    
+                    // First sort by payment status: unpaid first (false < true)
+                    if (aIsPaid !== bIsPaid) {
+                      return aIsPaid ? 1 : -1;
+                    }
+                    
+                    // If same payment status, sort by gender: male first
+                    if (aGender !== bGender) {
+                      if (aGender === 'male') return -1;
+                      if (bGender === 'male') return 1;
+                    }
+                    
+                    return 0;
+                  });
+                  
+                  return sortedPlayers.map((player, index) => (
                   <tr 
                     key={player.id} 
                     className={`border-b ${!player.is_paid ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
@@ -199,7 +221,8 @@ export default function BillContent({ bill, showHeader = true, onMarkPayment, is
                       )}
                     </td>
                   </tr>
-                ))}
+                  ));
+                })()}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 font-bold">

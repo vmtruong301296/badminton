@@ -259,11 +259,21 @@ export default function BillDetail() {
       setPaymentAccounts(response.data);
 
       // Preload and convert images to base64
+      // If qr_code_image is already a base64 string (starts with data:image/), use it directly
       const imageMap = {};
       const imagePromises = response.data
         .filter(acc => acc.is_active && acc.qr_code_image)
         .map(async (acc) => {
           try {
+            // Check if qr_code_image is already a base64 string
+            if (acc.qr_code_image.startsWith('data:image/')) {
+              // Already base64, use directly
+              imageMap[acc.id] = acc.qr_code_image;
+              console.log(`Account ${acc.id}: Using direct base64 image`);
+              return;
+            }
+
+            // Otherwise, it's a file path, need to load and convert
             const imageUrl = acc.qr_code_image_url ||
               (acc.qr_code_image ? `${window.location.origin}/storage/${acc.qr_code_image}` : null);
 
@@ -293,6 +303,7 @@ export default function BillDetail() {
       setExporting(true);
 
       // Ensure all payment account images are preloaded before export
+      // If qr_code_image is already base64, use it directly
       const accountsNeedingPreload = paymentAccounts
         .filter(acc => acc.is_active && acc.qr_code_image && !paymentAccountImages[acc.id]);
 
@@ -302,6 +313,15 @@ export default function BillDetail() {
 
         await Promise.all(accountsNeedingPreload.map(async (acc) => {
           try {
+            // Check if qr_code_image is already a base64 string
+            if (acc.qr_code_image.startsWith('data:image/')) {
+              // Already base64, use directly
+              imageMap[acc.id] = acc.qr_code_image;
+              console.log(`Account ${acc.id}: Using direct base64 image for export`);
+              return;
+            }
+
+            // Otherwise, it's a file path, need to load and convert
             const imageUrl = acc.qr_code_image_url ||
               (acc.qr_code_image ? `${window.location.origin}/storage/${acc.qr_code_image}` : null);
 
@@ -546,7 +566,29 @@ export default function BillDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {bill.bill_players?.map((player, index) => (
+                  {(() => {
+                    // Sort players: unpaid males -> unpaid females -> paid males -> paid females
+                    const sortedPlayers = [...(bill.bill_players || [])].sort((a, b) => {
+                      const aIsPaid = a.is_paid || false;
+                      const bIsPaid = b.is_paid || false;
+                      const aGender = a.user?.gender || '';
+                      const bGender = b.user?.gender || '';
+                      
+                      // First sort by payment status: unpaid first (false < true)
+                      if (aIsPaid !== bIsPaid) {
+                        return aIsPaid ? 1 : -1;
+                      }
+                      
+                      // If same payment status, sort by gender: male first
+                      if (aGender !== bGender) {
+                        if (aGender === 'male') return -1;
+                        if (bGender === 'male') return 1;
+                      }
+                      
+                      return 0;
+                    });
+                    
+                    return sortedPlayers.map((player, index) => (
                     <tr 
                       key={player.id} 
                       className={`border-b ${!player.is_paid ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
@@ -625,7 +667,8 @@ export default function BillDetail() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    ));
+                  })()}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 font-bold">

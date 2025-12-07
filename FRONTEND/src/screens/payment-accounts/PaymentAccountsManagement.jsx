@@ -12,7 +12,7 @@ export default function PaymentAccountsManagement() {
     bank_name: '',
     account_number: '',
     account_holder_name: '',
-    qr_code_image: null,
+    qr_code_image: null, // Will store base64 string
     is_active: true,
     note: '',
   });
@@ -41,11 +41,11 @@ export default function PaymentAccountsManagement() {
         bank_name: account.bank_name || '',
         account_number: account.account_number || '',
         account_holder_name: account.account_holder_name || '',
-        qr_code_image: null,
+        qr_code_image: account.qr_code_image || null, // base64 string from database
         is_active: account.is_active ?? true,
         note: account.note || '',
       });
-      setPreviewImage(getImageUrl(account.qr_code_image, account.qr_code_image_url));
+      setPreviewImage(account.qr_code_image || null);
     } else {
       setEditingAccount(null);
       setFormData({
@@ -78,10 +78,11 @@ export default function PaymentAccountsManagement() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({ ...formData, qr_code_image: file });
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result);
+        const base64String = reader.result; // This is already base64 data URL
+        setFormData({ ...formData, qr_code_image: base64String });
+        setPreviewImage(base64String);
       };
       reader.readAsDataURL(file);
     }
@@ -91,35 +92,18 @@ export default function PaymentAccountsManagement() {
     e.preventDefault();
     try {
       // Prepare data with proper boolean conversion
-      // Only include qr_code_image if it's a File object (new file selected)
       const submitData = {
         bank_name: formData.bank_name,
         account_number: formData.account_number,
         account_holder_name: formData.account_holder_name,
         is_active: formData.is_active === true || formData.is_active === 'true' || formData.is_active === 1,
         note: formData.note,
+        qr_code_image: formData.qr_code_image || null, // base64 string or null
       };
       
-      // Only include qr_code_image if it's a File object
-      if (formData.qr_code_image instanceof File) {
-        submitData.qr_code_image = formData.qr_code_image;
-      }
-      
-      // Debug: Check if file is included
-      console.log('Submitting data:', {
-        ...submitData,
-        qr_code_image: submitData.qr_code_image instanceof File ? `File: ${submitData.qr_code_image.name}` : 'Not included'
-      });
-      
       if (editingAccount) {
-        const response = await paymentAccountsApi.update(editingAccount.id, submitData);
-        console.log('Update response:', response.data);
-        console.log('Update response - qr_code_image:', response.data.qr_code_image);
-        console.log('Update response - qr_code_image_url:', response.data.qr_code_image_url);
-        
+        await paymentAccountsApi.update(editingAccount.id, submitData);
         handleCloseModal();
-        
-        // Reload accounts immediately to get fresh data from server
         await loadAccounts();
       } else {
         await paymentAccountsApi.create(submitData);
@@ -151,14 +135,7 @@ export default function PaymentAccountsManagement() {
     setDeleteConfirm({ isOpen: false, accountId: null });
   };
 
-  const getImageUrl = (imagePath, imageUrl) => {
-    // Prefer full URL from API if available (already includes cache busting from backend)
-    if (imageUrl) return imageUrl;
-    if (!imagePath) return null;
-    // Ensure proper URL format
-    const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    return `/storage/${cleanPath}`;
-  };
+  // No longer needed - images are now base64 strings directly from database
 
   return (
     <div>
@@ -206,16 +183,12 @@ export default function PaymentAccountsManagement() {
               {account.qr_code_image && (
                 <div className="mb-4">
                   <img
-                    key={getImageUrl(account.qr_code_image, account.qr_code_image_url)}
-                    src={getImageUrl(account.qr_code_image, account.qr_code_image_url)}
+                    src={account.qr_code_image}
                     alt="QR Code"
                     className="w-full h-auto border rounded-lg"
                     onError={(e) => {
-                      console.error('Error loading image:', account.qr_code_image, getImageUrl(account.qr_code_image, account.qr_code_image_url));
+                      console.error('Error loading image');
                       e.target.style.display = 'none';
-                    }}
-                    onLoad={() => {
-                      console.log('Image loaded successfully:', getImageUrl(account.qr_code_image, account.qr_code_image_url));
                     }}
                   />
                 </div>

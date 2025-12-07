@@ -2,37 +2,13 @@ import { useMemo } from "react";
 import { formatCurrencyRounded, formatDate, formatDateDisplay, formatRatio } from "../../utils/formatters";
 
 export default function BillExport({ bill, paymentAccounts = [], paymentAccountImages = {} }) {
-	if (!bill) return null;
-
 	// Get active payment accounts (memoized to avoid re-renders)
+	// Must be called before any early returns to comply with React Hooks rules
 	const activeAccounts = useMemo(() => {
 		return paymentAccounts.filter((acc) => acc.is_active);
 	}, [paymentAccounts]);
 
-	const getImageUrl = (imagePath, imageUrl) => {
-		// Prefer full URL from API if available (already includes cache busting from backend)
-		if (imageUrl) {
-			// If imageUrl is relative, convert to absolute for export
-			if (imageUrl.startsWith("/")) {
-				const absoluteUrl = window.location.origin + imageUrl;
-				console.log("BillExport - Converted relative URL to absolute:", absoluteUrl);
-				return absoluteUrl;
-			}
-			console.log("BillExport - Using imageUrl:", imageUrl);
-			return imageUrl;
-		}
-		if (!imagePath) {
-			console.log("BillExport - No imagePath provided");
-			return null;
-		}
-		// Ensure proper URL format
-		const cleanPath = imagePath.startsWith("/") ? imagePath.substring(1) : imagePath;
-		const relativeUrl = `/storage/${cleanPath}`;
-		// Convert to absolute URL for export
-		const absoluteUrl = window.location.origin + relativeUrl;
-		console.log("BillExport - Generated absolute URL from path:", absoluteUrl);
-		return absoluteUrl;
-	};
+	if (!bill) return null;
 
 	// Helper function to render bill content
 	const renderBillContent = (billData, showTitle = true) => (
@@ -86,7 +62,29 @@ export default function BillExport({ bill, paymentAccounts = [], paymentAccountI
 						</tr>
 					</thead>
 					<tbody>
-						{billData.bill_players?.map((player, index) => (
+						{(() => {
+							// Sort players: unpaid males -> unpaid females -> paid males -> paid females
+							const sortedPlayers = [...(billData.bill_players || [])].sort((a, b) => {
+								const aIsPaid = a.is_paid || false;
+								const bIsPaid = b.is_paid || false;
+								const aGender = a.user?.gender || '';
+								const bGender = b.user?.gender || '';
+								
+								// First sort by payment status: unpaid first (false < true)
+								if (aIsPaid !== bIsPaid) {
+									return aIsPaid ? 1 : -1;
+								}
+								
+								// If same payment status, sort by gender: male first
+								if (aGender !== bGender) {
+									if (aGender === 'male') return -1;
+									if (bGender === 'male') return 1;
+								}
+								
+								return 0;
+							});
+							
+							return sortedPlayers.map((player, index) => (
 							<tr key={player.id}>
 								<td className="border border-gray-300 px-3 py-2">{index + 1}</td>
 								<td className="border border-gray-300 px-3 py-2 font-medium">{player.user?.name}</td>
@@ -137,7 +135,8 @@ export default function BillExport({ bill, paymentAccounts = [], paymentAccountI
 								<td className="border border-gray-300 px-3 py-2 text-right font-semibold">{formatCurrencyRounded((player.total_amount || 0) + (player.debt_amount || 0))}</td>
 								<td className="border border-gray-300 px-3 py-2 text-center">{player.is_paid ? "✓" : ""}</td>
 							</tr>
-						))}
+							));
+						})()}
 					</tbody>
 				</table>
 			</div>
@@ -152,10 +151,13 @@ export default function BillExport({ bill, paymentAccounts = [], paymentAccountI
 			<div>
 				<div className="space-y-4">
 					{activeAccounts.map((account) => {
+						// Check if qr_code_image is already a base64 string (starts with data:image/)
+						const isBase64 = account.qr_code_image && account.qr_code_image.startsWith('data:image/');
+						
+						// Use base64 from paymentAccountImages (preloaded), or direct base64 from account, or fallback to old URL method
 						const base64Image = paymentAccountImages[account.id];
-						const imageUrl =
-							account.qr_code_image_url || (account.qr_code_image ? `${window.location.origin}/storage/${account.qr_code_image}` : null);
-						const imageSrc = base64Image || imageUrl;
+						const imageSrc = base64Image || (isBase64 ? account.qr_code_image : null) || 
+							(account.qr_code_image_url || (account.qr_code_image ? `${window.location.origin}/storage/${account.qr_code_image}` : null));
 
 						return (
 							<div key={account.id} className="text-center p-4 bg-gray-50 rounded-lg border">
@@ -165,7 +167,7 @@ export default function BillExport({ bill, paymentAccounts = [], paymentAccountI
 											src={imageSrc}
 											alt="QR Code"
 											className="w-full h-auto object-contain border-2 border-gray-300 rounded bill-export-image"
-											crossOrigin={base64Image ? undefined : "anonymous"}
+											crossOrigin={isBase64 || base64Image ? undefined : "anonymous"}
 											loading="eager"
 											style={{ maxHeight: "500px" }}
 										/>

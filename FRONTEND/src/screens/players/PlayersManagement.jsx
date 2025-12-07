@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { playersApi } from '../../services/api';
-import { formatCurrency, formatRatio } from '../../utils/formatters';
+import { formatRatio } from '../../utils/formatters';
 import CurrencyInput from '../../components/common/CurrencyInput';
 import NumberInput from '../../components/common/NumberInput';
 
@@ -9,7 +9,7 @@ export default function PlayersManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState(null);
-  const [filters, setFilters] = useState({ search: '', gender: '', has_debt: '' });
+  const [filters, setFilters] = useState({ search: '', gender: '' });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -18,6 +18,12 @@ export default function PlayersManagement() {
     gender: '',
     default_ratio: '',
     phone: '',
+  });
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddData, setQuickAddData] = useState({
+    name: '',
+    gender: 'male',
+    default_ratio: 1,
   });
 
   useEffect(() => {
@@ -30,7 +36,6 @@ export default function PlayersManagement() {
       const params = {};
       if (filters.search) params.search = filters.search;
       if (filters.gender) params.gender = filters.gender;
-      if (filters.has_debt) params.has_debt = filters.has_debt === 'true';
 
       const response = await playersApi.getAll(params);
       setPlayers(response.data);
@@ -63,6 +68,10 @@ export default function PlayersManagement() {
       if (editingPlayer) {
         await playersApi.update(editingPlayer.id, payload);
       } else {
+        // Tự động tạo email và password khi thêm mới
+        const slug = payload.name.trim().toLowerCase().replace(/\s+/g, '');
+        payload.email = `${slug || 'player'}${Date.now()}@badminton.local`;
+        payload.password = 'password';
         await playersApi.create(payload);
       }
       setShowForm(false);
@@ -82,6 +91,40 @@ export default function PlayersManagement() {
     }
   };
 
+  const handleQuickAdd = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!quickAddData.name.trim()) {
+      alert('Vui lòng nhập tên người chơi');
+      return;
+    }
+
+    const slug = quickAddData.name.trim().toLowerCase().replace(/\s+/g, '');
+    const email = `${slug || 'player'}${Date.now()}@badminton.local`;
+
+    try {
+      const payload = {
+        name: quickAddData.name.trim(),
+        gender: quickAddData.gender,
+        default_ratio: quickAddData.default_ratio,
+        email,
+        password: 'password',
+      };
+      await playersApi.create(payload);
+      setShowQuickAdd(false);
+      setQuickAddData({
+        name: '',
+        gender: 'male',
+        default_ratio: 1,
+      });
+      loadPlayers();
+    } catch (error) {
+      console.error('Error creating player:', error);
+      alert('Không thể tạo người chơi mới. Vui lòng thử lại.');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Bạn có chắc muốn xóa người chơi này?')) return;
     try {
@@ -97,28 +140,43 @@ export default function PlayersManagement() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Quản lý Người chơi</h2>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setEditingPlayer(null);
-            setFormData({
-              name: '',
-              email: '',
-              password: '',
-              gender: '',
-              default_ratio: '',
-              phone: '',
-            });
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          + Thêm người chơi
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => {
+              setShowQuickAdd(true);
+              setQuickAddData({
+                name: '',
+                gender: 'male',
+                default_ratio: 1,
+              });
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            + Thêm nhanh
+          </button>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setEditingPlayer(null);
+              setFormData({
+                name: '',
+                email: '',
+                password: '',
+                gender: '',
+                default_ratio: '',
+                phone: '',
+              });
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            + Thêm người chơi
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             type="text"
             placeholder="Tìm kiếm tên..."
@@ -135,17 +193,81 @@ export default function PlayersManagement() {
             <option value="male">Nam</option>
             <option value="female">Nữ</option>
           </select>
-          <select
-            value={filters.has_debt}
-            onChange={(e) => setFilters({ ...filters, has_debt: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Tất cả</option>
-            <option value="true">Có nợ</option>
-            <option value="false">Không nợ</option>
-          </select>
         </div>
       </div>
+
+      {/* Quick Add Modal */}
+      {showQuickAdd && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQuickAdd(false)}>
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Thêm nhanh người chơi</h3>
+              <form onSubmit={handleQuickAdd} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên</label>
+                  <input
+                    type="text"
+                    value={quickAddData.name}
+                    onChange={(e) => setQuickAddData({ ...quickAddData, name: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleQuickAdd(e);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Nhập tên người chơi"
+                    autoFocus
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
+                  <select
+                    value={quickAddData.gender}
+                    onChange={(e) => setQuickAddData({ ...quickAddData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="male">Nam</option>
+                    <option value="female">Nữ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mức tính mặc định</label>
+                  <NumberInput
+                    value={quickAddData.default_ratio}
+                    onChange={(value) => setQuickAddData({ ...quickAddData, default_ratio: value })}
+                    min={0}
+                    step={0.1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickAdd(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Lưu
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Ghi chú: tài khoản tạo nhanh dùng mật khẩu mặc định "password".
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Form Modal */}
       {showForm && (
@@ -165,27 +287,28 @@ export default function PlayersManagement() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Email *</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-              {!editingPlayer && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Mật khẩu *</label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
+              {editingPlayer && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Email *</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Mật khẩu mới (để trống nếu không đổi)</label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </>
               )}
               <div>
                 <label className="block text-sm font-medium mb-1">Giới tính</label>
@@ -209,15 +332,17 @@ export default function PlayersManagement() {
                   className="w-full"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Số điện thoại</label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
+              {editingPlayer && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Số điện thoại</label>
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              )}
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -259,9 +384,6 @@ export default function PlayersManagement() {
                   Mức tính
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Nợ hiện tại
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Thao tác
                 </th>
               </tr>
@@ -275,9 +397,6 @@ export default function PlayersManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {player.default_ratio ? formatRatio(player.default_ratio) : 'Mặc định'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {formatCurrency(player.current_debt_amount || 0)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
