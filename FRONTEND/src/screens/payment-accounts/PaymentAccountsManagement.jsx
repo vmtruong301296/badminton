@@ -138,13 +138,13 @@ export default function PaymentAccountsManagement() {
   // No longer needed - images are now base64 strings directly from database
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Quản lý Tài khoản Nhận tiền</h2>
+    <div className="px-2 sm:px-0">
+      <div className="flex flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý Tài khoản Nhận tiền</h2>
         <button
           type="button"
           onClick={() => handleOpenModal()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 text-sm sm:text-base whitespace-nowrap"
         >
           ➕ Thêm tài khoản
         </button>
@@ -155,11 +155,11 @@ export default function PaymentAccountsManagement() {
       ) : accounts.length === 0 ? (
         <div className="text-center py-8 text-gray-500">Chưa có tài khoản nào</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {accounts.map((account) => (
             <div
               key={account.id}
-              className={`bg-white rounded-lg shadow p-6 border-2 ${
+              className={`bg-white rounded-lg shadow p-4 sm:p-6 border-2 ${
                 account.is_active ? 'border-green-200' : 'border-gray-200 opacity-60'
               }`}
             >

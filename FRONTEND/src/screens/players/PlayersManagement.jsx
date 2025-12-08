@@ -182,10 +182,10 @@ export default function PlayersManagement() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Quản lý Người chơi</h2>
-        <div className="flex space-x-3">
+    <div className="px-2 sm:px-0">
+      <div className="flex flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <h2 className="text-xl sm:text-2xl font-bold">Quản lý Người chơi</h2>
+        <div className="flex space-x-2 sm:space-x-3">
           <button
             onClick={() => {
               setShowQuickAdd(true);
@@ -195,7 +195,7 @@ export default function PlayersManagement() {
                 default_ratio: 1,
               });
             }}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            className="px-2 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm whitespace-nowrap"
           >
             + Thêm nhanh
           </button>
@@ -212,9 +212,9 @@ export default function PlayersManagement() {
                 phone: '',
               });
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-2 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm whitespace-nowrap"
           >
-            + Thêm người chơi
+            + Thêm
           </button>
         </div>
       </div>
@@ -420,45 +420,107 @@ export default function PlayersManagement() {
       {loading ? (
         <div className="text-center py-8">Đang tải...</div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Tên
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Giới tính
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Mức tính
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Quyền
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {players.map((player) => (
-                <tr key={player.id}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{player.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {player.email || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {player.default_ratio ? formatRatio(player.default_ratio) : 'Mặc định'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1">
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Tên
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Giới tính
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Mức tính
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Quyền
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Thao tác
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {players.map((player) => (
+                  <tr key={player.id}>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">{player.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {player.email || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {player.default_ratio ? formatRatio(player.default_ratio) : 'Mặc định'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {player.roles && player.roles.length > 0 ? (
+                          player.roles.map((role) => (
+                            <span
+                              key={role.id}
+                              className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
+                            >
+                              {role.display_name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-400 text-sm">Chưa có quyền</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(player)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleAssignRoles(player)}
+                        className="text-green-600 hover:text-green-900 mr-3"
+                      >
+                        Quyền
+                      </button>
+                      <button
+                        onClick={() => handleDelete(player.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {players.map((player) => (
+              <div key={player.id} className="bg-white shadow rounded-lg p-4">
+                <div className="mb-3">
+                  <h3 className="font-semibold text-gray-900 text-base">{player.name}</h3>
+                  {player.email && (
+                    <p className="text-xs text-gray-600 mt-1">{player.email}</p>
+                  )}
+                </div>
+                <div className="space-y-2 mb-3">
+                  <div className="text-sm text-gray-700">
+                    Giới tính: <span className="font-medium">{player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'}</span>
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    Mức tính: <span className="font-medium">{player.default_ratio ? formatRatio(player.default_ratio) : 'Mặc định'}</span>
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    Quyền: 
+                    <div className="flex flex-wrap gap-1 mt-1">
                       {player.roles && player.roles.length > 0 ? (
                         player.roles.map((role) => (
                           <span
@@ -469,35 +531,35 @@ export default function PlayersManagement() {
                           </span>
                         ))
                       ) : (
-                        <span className="text-gray-400 text-sm">Chưa có quyền</span>
+                        <span className="text-gray-400 text-xs">Chưa có quyền</span>
                       )}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(player)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => handleAssignRoles(player)}
-                      className="text-green-600 hover:text-green-900 mr-3"
-                    >
-                      Quyền
-                    </button>
-                    <button
-                      onClick={() => handleDelete(player.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => handleEdit(player)}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() => handleAssignRoles(player)}
+                    className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                  >
+                    Quyền
+                  </button>
+                  <button
+                    onClick={() => handleDelete(player.id)}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Role Assignment Modal */}

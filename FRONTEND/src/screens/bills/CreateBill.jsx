@@ -215,16 +215,16 @@ export default function CreateBill() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">
+    <div className="px-2 sm:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <h2 className="text-xl sm:text-2xl font-bold">
           {parentBill ? `Tạo Bill con cho Bill #${parentBill.id}` : 'Tạo Bill mới'}
         </h2>
         {parentBill && (
           <button
             type="button"
             onClick={() => navigate(`/bills/${parentBill.id}`)}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
           >
             ← Về Bill chính
           </button>
@@ -232,8 +232,8 @@ export default function CreateBill() {
       </div>
 
       {parentBill && (
-        <div className="bg-blue-50 p-4 rounded-lg mb-6 border-2 border-blue-200">
-          <p className="text-sm text-blue-900">
+        <div className="bg-blue-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 border-2 border-blue-200">
+          <p className="text-xs sm:text-sm text-blue-900">
             <strong>Bill chính:</strong> Bill #{parentBill.id} | 
             Ngày: {formatDate(parentBill.date)} | 
             Tổng tiền: {formatCurrencyRounded(parentBill.total_amount)} | 
@@ -243,17 +243,17 @@ export default function CreateBill() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Basic Info and Shuttles */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
               {/* Basic Info - Bên trái */}
-              <div className="bg-white p-6 rounded-lg shadow md:col-span-1">
-                <h3 className="text-lg font-semibold mb-4">Thông tin cơ bản</h3>
-                <div className="space-y-4">
+              <div className="bg-white p-4 sm:p-6 rounded-lg shadow md:col-span-1">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Thông tin cơ bản</h3>
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Ngày đánh *
                     </label>
                     <DatePicker
@@ -263,7 +263,7 @@ export default function CreateBill() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Tổng tiền sân (VND) *
                     </label>
                     <CurrencyInput
@@ -273,13 +273,13 @@ export default function CreateBill() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Ghi chú
                     </label>
                     <textarea
                       value={formData.note}
                       onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                       rows={1}
                     />
                   </div>
@@ -287,18 +287,18 @@ export default function CreateBill() {
               </div>
 
               {/* Shuttles - Bên phải */}
-              <div className="bg-white p-6 rounded-lg shadow md:col-span-2">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Loại cầu</h3>
+              <div className="bg-white p-4 sm:p-6 rounded-lg shadow md:col-span-2">
+                <div className="flex flex-row justify-between items-center mb-3 sm:mb-4 gap-2 sm:gap-0">
+                  <h3 className="text-base sm:text-lg font-semibold">Loại cầu</h3>
                   <button
                     type="button"
                     onClick={handleAddShuttle}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    className="px-3 sm:px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm sm:text-base whitespace-nowrap"
                   >
                     + Thêm cầu
                   </button>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {formData.shuttles.map((shuttle, index) => (
                     <ShuttleRow
                       key={index}
@@ -312,11 +312,11 @@ export default function CreateBill() {
             </div>
 
             {/* Players */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4">Người chơi</h3>
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Người chơi</h3>
               
               {/* Phần chọn người chơi - 2 cột */}
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <PlayerSelector
                   selectedPlayers={formData.players}
                   onSelect={handleSelectPlayer}
@@ -326,26 +326,26 @@ export default function CreateBill() {
 
               {/* Phần chi tiết từng người chơi đã chọn */}
               {formData.players.length > 0 && (
-                <div className="mt-6 pt-6 border-t">
-                  <h4 className="text-md font-semibold mb-4 text-gray-700">
+                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
+                  <h4 className="text-sm sm:text-md font-semibold mb-3 sm:mb-4 text-gray-700">
                     Chi tiết người chơi ({formData.players.length})
                   </h4>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {formData.players.map((player, index) => (
-                      <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div key={index} className="border rounded-lg p-3 sm:p-4 bg-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                           {/* Bên trái: Tên, giới tính, mức tính */}
                           <div className="md:col-span-1">
-                            <div className="mb-4">
-                              <h4 className="font-semibold text-lg text-gray-900 mb-2">{player.name}</h4>
-                              <div className="text-sm text-gray-600 mb-3">
+                            <div className="mb-3 sm:mb-4">
+                              <h4 className="font-semibold text-base sm:text-lg text-gray-900 mb-2">{player.name}</h4>
+                              <div className="text-xs sm:text-sm text-gray-600 mb-3">
                                 <span className="mr-3">
                                   Giới tính: <span className="font-medium">{player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'}</span>
                                 </span>
                               </div>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Mức tính (override)
                               </label>
                               <NumberInput
@@ -365,7 +365,7 @@ export default function CreateBill() {
 
                           {/* Bên phải: Menu nước */}
                           <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                               Menu nước
                             </label>
                             <MenuItemPicker
@@ -382,18 +382,18 @@ export default function CreateBill() {
             </div>
 
             {/* Submit */}
-            <div className="flex justify-end space-x-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                className="w-full sm:w-auto px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm sm:text-base"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm sm:text-base"
               >
                 {loading ? 'Đang tạo...' : 'Tạo Bill'}
               </button>

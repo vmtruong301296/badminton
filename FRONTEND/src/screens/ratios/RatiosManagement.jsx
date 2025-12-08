@@ -73,16 +73,16 @@ export default function RatiosManagement() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Quản lý Mức tính</h2>
+    <div className="px-2 sm:px-0">
+      <div className="flex flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <h2 className="text-xl sm:text-2xl font-bold">Quản lý Mức tính</h2>
         <button
           onClick={() => {
             setShowForm(true);
             setEditingRatio(null);
             setFormData({ name: '', gender: '', value: 1.0, is_default: false });
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm sm:text-base whitespace-nowrap"
         >
           + Thêm mức tính
         </button>
@@ -164,59 +164,100 @@ export default function RatiosManagement() {
       {loading ? (
         <div className="text-center py-8">Đang tải...</div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Tên
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Giới tính
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Giá trị
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Mặc định
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {ratios.map((ratio) => (
-                <tr key={ratio.id}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{ratio.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {ratio.gender === 'male' ? 'Nam' : ratio.gender === 'female' ? 'Nữ' : 'Chung'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {formatRatio(ratio.value)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {ratio.is_default ? '✓' : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(ratio)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => handleDelete(ratio.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Xóa
-                    </button>
-                  </td>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Tên
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Giới tính
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Giá trị
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Mặc định
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Thao tác
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {ratios.map((ratio) => (
+                  <tr key={ratio.id}>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">{ratio.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {ratio.gender === 'male' ? 'Nam' : ratio.gender === 'female' ? 'Nữ' : 'Chung'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {formatRatio(ratio.value)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {ratio.is_default ? '✓' : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(ratio)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDelete(ratio.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {ratios.map((ratio) => (
+              <div key={ratio.id} className="bg-white shadow rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{ratio.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {ratio.gender === 'male' ? 'Nam' : ratio.gender === 'female' ? 'Nữ' : 'Chung'}
+                    </p>
+                  </div>
+                  {ratio.is_default && (
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      Mặc định
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-700 mb-3">
+                  Giá trị: <span className="font-medium">{formatRatio(ratio.value)}</span>
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => handleEdit(ratio)}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() => handleDelete(ratio.id)}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

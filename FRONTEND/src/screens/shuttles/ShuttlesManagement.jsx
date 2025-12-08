@@ -66,16 +66,16 @@ export default function ShuttlesManagement() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Quản lý Loại quả cầu</h2>
+    <div className="px-2 sm:px-0">
+      <div className="flex flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+        <h2 className="text-xl sm:text-2xl font-bold">Quản lý Loại quả cầu</h2>
         <button
           onClick={() => {
             setShowForm(true);
             setEditingShuttle(null);
             setFormData({ name: '', price: 0 });
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm sm:text-base whitespace-nowrap"
         >
           + Thêm loại cầu
         </button>
@@ -132,45 +132,74 @@ export default function ShuttlesManagement() {
       {loading ? (
         <div className="text-center py-8">Đang tải...</div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Tên
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Giá
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {shuttles.map((shuttle) => (
-                <tr key={shuttle.id}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{shuttle.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{formatCurrency(shuttle.price)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(shuttle)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => handleDelete(shuttle.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Xóa
-                    </button>
-                  </td>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Tên
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Giá
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Thao tác
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {shuttles.map((shuttle) => (
+                  <tr key={shuttle.id}>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">{shuttle.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{formatCurrency(shuttle.price)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(shuttle)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDelete(shuttle.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {shuttles.map((shuttle) => (
+              <div key={shuttle.id} className="bg-white shadow rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-semibold text-gray-900">{shuttle.name}</h3>
+                  <span className="text-lg font-bold text-gray-900">{formatCurrency(shuttle.price)}</span>
+                </div>
+                <div className="flex gap-2 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => handleEdit(shuttle)}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() => handleDelete(shuttle.id)}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

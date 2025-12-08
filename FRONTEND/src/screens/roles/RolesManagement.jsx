@@ -119,17 +119,18 @@ export default function RolesManagement() {
 	}
 
 	return (
-		<div>
-			<div className="flex justify-between items-center mb-6">
-				<h2 className="text-2xl font-bold text-gray-900">Quản lý Quyền</h2>
+		<div className="px-2 sm:px-0">
+			<div className="flex flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+				<h2 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý Quyền</h2>
 				<button
 					onClick={handleCreate}
-					className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+					className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 text-sm sm:text-base whitespace-nowrap">
 					➕ Tạo Quyền mới
 				</button>
 			</div>
 
-			<div className="bg-white shadow rounded-lg overflow-hidden">
+			{/* Desktop Table View */}
+			<div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
 				<table className="min-w-full divide-y divide-gray-200">
 					<thead className="bg-gray-50">
 						<tr>
@@ -183,6 +184,38 @@ export default function RolesManagement() {
 						))}
 					</tbody>
 				</table>
+			</div>
+
+			{/* Mobile Card View */}
+			<div className="md:hidden space-y-3">
+				{roles.map((role) => (
+					<div key={role.id} className="bg-white shadow rounded-lg p-4">
+						<div className="mb-3">
+							<h3 className="font-semibold text-gray-900 text-base">{role.display_name}</h3>
+							<p className="text-xs text-gray-500 mt-1">{role.name}</p>
+						</div>
+						{role.description && (
+							<p className="text-sm text-gray-600 mb-3">{role.description}</p>
+						)}
+						<div className="text-sm text-gray-700 mb-3">
+							Số người dùng: <span className="font-medium">{role.users_count || 0}</span>
+						</div>
+						<div className="flex gap-2 pt-3 border-t border-gray-200">
+							<button
+								onClick={() => handleEdit(role)}
+								className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+							>
+								Sửa
+							</button>
+							<button
+								onClick={() => handleDeleteClick(role.id)}
+								className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+							>
+								Xóa
+							</button>
+						</div>
+					</div>
+				))}
 			</div>
 
 			{/* Create/Edit Modal */}
