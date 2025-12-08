@@ -4,7 +4,9 @@ use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\PaymentAccountController;
+use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RatioController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ShuttleTypeController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 // Players (Người chơi)
 Route::apiResource('players', UserController::class);
 Route::get('players/{id}/debts', [UserController::class, 'debts']);
+Route::post('players/{id}/roles', [UserController::class, 'assignRoles']);
 
 // Ratios (Mức tính)
 Route::apiResource('ratios', RatioController::class);
@@ -36,6 +39,13 @@ Route::apiResource('debts', DebtController::class);
 // POST route for updating with file upload (must be before apiResource to avoid route conflict)
 Route::post('payment-accounts/{id}/update', [PaymentAccountController::class, 'update']);
 Route::apiResource('payment-accounts', PaymentAccountController::class);
+
+// Roles (Quyền)
+Route::apiResource('roles', RoleController::class);
+
+// Permissions (Quyền chức năng)
+Route::get('permissions', [PermissionController::class, 'index']);
+Route::get('permissions/{id}', [PermissionController::class, 'show']);
 
 // Serve images with CORS headers
 Route::get('images/{path}', function ($path) {

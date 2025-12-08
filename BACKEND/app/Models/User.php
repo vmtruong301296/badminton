@@ -87,4 +87,40 @@ class User extends Authenticatable
 
         return $defaultRatio ? (float) $defaultRatio->value : 1.0;
     }
+
+    /**
+     * The roles that belong to the user.
+     */
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    /**
+     * Check if user has a specific role.
+     */
+    public function hasRole(string $roleName): bool
+    {
+        return $this->roles()->where('name', $roleName)->exists();
+    }
+
+    /**
+     * Check if user has a specific permission (through roles).
+     */
+    public function hasPermission(string $permissionName): bool
+    {
+        return $this->roles()->whereHas('permissions', function ($query) use ($permissionName) {
+            $query->where('name', $permissionName);
+        })->exists();
+    }
+
+    /**
+     * Check if user has any of the given permissions.
+     */
+    public function hasAnyPermission(array $permissionNames): bool
+    {
+        return $this->roles()->whereHas('permissions', function ($query) use ($permissionNames) {
+            $query->whereIn('name', $permissionNames);
+        })->exists();
+    }
 }

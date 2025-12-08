@@ -13,6 +13,7 @@ export default function Layout({ children }) {
     { path: '/menus', label: 'Menu nước', icon: '🥤' },
     { path: '/shuttles', label: 'Loại cầu', icon: '🏸' },
     { path: '/payment-accounts', label: 'Tài khoản nhận tiền', icon: '💳' },
+    { path: '/roles', label: 'Quản lý Quyền', icon: '🔐' },
   ];
 
   return (

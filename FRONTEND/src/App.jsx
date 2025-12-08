@@ -8,6 +8,7 @@ import ShuttlesManagement from './screens/shuttles/ShuttlesManagement';
 import CreateBill from './screens/bills/CreateBill';
 import BillDetail from './screens/bills/BillDetail';
 import PaymentAccountsManagement from './screens/payment-accounts/PaymentAccountsManagement';
+import RolesManagement from './screens/roles/RolesManagement';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/bills/create" element={<CreateBill />} />
           <Route path="/bills/:id" element={<BillDetail />} />
           <Route path="/payment-accounts" element={<PaymentAccountsManagement />} />
+          <Route path="/roles" element={<RolesManagement />} />
         </Routes>
       </Layout>
     </Router>

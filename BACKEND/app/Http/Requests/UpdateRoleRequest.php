@@ -4,14 +4,14 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateUserRequest extends FormRequest
+class UpdateRoleRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return true;
+        return true; // TODO: Add permission check
     }
 
     /**
@@ -21,14 +21,13 @@ class UpdateUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $userId = $this->route('player') ?? $this->route('id');
+        $roleId = $this->route('role');
         return [
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $userId,
-            'password' => 'sometimes|string|min:8',
-            'gender' => 'sometimes|in:male,female',
-            'default_ratio' => 'sometimes|numeric|min:0',
-            'phone' => 'nullable|string|max:20',
+            'name' => 'required|string|max:255|unique:roles,name,' . $roleId,
+            'display_name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'permission_ids' => 'nullable|array',
+            'permission_ids.*' => 'exists:permissions,id',
         ];
     }
 }

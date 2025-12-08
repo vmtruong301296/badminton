@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
-import { playersApi } from '../../services/api';
+import { playersApi, rolesApi } from '../../services/api';
 import { formatRatio } from '../../utils/formatters';
 import CurrencyInput from '../../components/common/CurrencyInput';
 import NumberInput from '../../components/common/NumberInput';
 
 export default function PlayersManagement() {
   const [players, setPlayers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [selectedRoleIds, setSelectedRoleIds] = useState([]);
   const [filters, setFilters] = useState({ search: '', gender: '' });
 
   const [formData, setFormData] = useState({
@@ -28,6 +32,7 @@ export default function PlayersManagement() {
 
   useEffect(() => {
     loadPlayers();
+    loadRoles();
   }, [filters]);
 
   const loadPlayers = async () => {
@@ -43,6 +48,15 @@ export default function PlayersManagement() {
       console.error('Error loading players:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const response = await rolesApi.getAll();
+      setRoles(response.data);
+    } catch (error) {
+      console.error('Error loading roles:', error);
     }
   };
 
@@ -64,6 +78,11 @@ export default function PlayersManagement() {
     try {
       const payload = { ...formData };
       if (!payload.password) delete payload.password;
+      
+      // Convert empty string to null for nullable fields
+      if (payload.phone === '') {
+        payload.phone = null;
+      }
 
       if (editingPlayer) {
         await playersApi.update(editingPlayer.id, payload);
@@ -134,6 +153,32 @@ export default function PlayersManagement() {
       console.error('Error deleting player:', error);
       alert('Có lỗi xảy ra');
     }
+  };
+
+  const handleAssignRoles = (player) => {
+    setSelectedPlayer(player);
+    setSelectedRoleIds(player.roles?.map((r) => r.id) || []);
+    setShowRoleModal(true);
+  };
+
+  const handleRoleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await playersApi.assignRoles(selectedPlayer.id, selectedRoleIds);
+      setShowRoleModal(false);
+      setSelectedPlayer(null);
+      setSelectedRoleIds([]);
+      loadPlayers();
+    } catch (error) {
+      console.error('Error assigning roles:', error);
+      alert('Có lỗi xảy ra khi gán quyền');
+    }
+  };
+
+  const toggleRole = (roleId) => {
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
   };
 
   return (
@@ -293,11 +338,15 @@ export default function PlayersManagement() {
                     <label className="block text-sm font-medium mb-1">Email *</label>
                     <input
                       type="email"
-                      value={formData.email}
+                      value={formData.email || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                      placeholder="Nhập email"
                     />
+                    {editingPlayer.email && (
+                      <p className="text-xs text-gray-500 mt-1">Email hiện tại: {editingPlayer.email}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Mật khẩu mới (để trống nếu không đổi)</label>
@@ -306,6 +355,7 @@ export default function PlayersManagement() {
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Nhập mật khẩu mới"
                     />
                   </div>
                 </>
@@ -378,10 +428,16 @@ export default function PlayersManagement() {
                   Tên
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Giới tính
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Mức tính
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Quyền
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Thao tác
@@ -392,11 +448,30 @@ export default function PlayersManagement() {
               {players.map((player) => (
                 <tr key={player.id}>
                   <td className="px-6 py-4 whitespace-nowrap font-medium">{player.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {player.email || '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {player.gender === 'male' ? 'Nam' : player.gender === 'female' ? 'Nữ' : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {player.default_ratio ? formatRatio(player.default_ratio) : 'Mặc định'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-wrap gap-1">
+                      {player.roles && player.roles.length > 0 ? (
+                        player.roles.map((role) => (
+                          <span
+                            key={role.id}
+                            className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
+                          >
+                            {role.display_name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 text-sm">Chưa có quyền</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
@@ -404,6 +479,12 @@ export default function PlayersManagement() {
                       className="text-blue-600 hover:text-blue-900 mr-3"
                     >
                       Sửa
+                    </button>
+                    <button
+                      onClick={() => handleAssignRoles(player)}
+                      className="text-green-600 hover:text-green-900 mr-3"
+                    >
+                      Quyền
                     </button>
                     <button
                       onClick={() => handleDelete(player.id)}
@@ -416,6 +497,56 @@ export default function PlayersManagement() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Role Assignment Modal */}
+      {showRoleModal && selectedPlayer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">
+              Gán quyền cho: {selectedPlayer.name}
+            </h3>
+            <form onSubmit={handleRoleSubmit}>
+              <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
+                {roles.map((role) => (
+                  <label key={role.id} className="flex items-center p-2 hover:bg-gray-50 rounded">
+                    <input
+                      type="checkbox"
+                      checked={selectedRoleIds.includes(role.id)}
+                      onChange={() => toggleRole(role.id)}
+                      className="mr-3"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900">{role.display_name}</div>
+                      {role.description && (
+                        <div className="text-sm text-gray-500">{role.description}</div>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRoleModal(false);
+                    setSelectedPlayer(null);
+                    setSelectedRoleIds([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Lưu
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

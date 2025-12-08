@@ -19,6 +19,7 @@ class UserController extends Controller
         $query = User::with(['debts' => function ($query) {
             $query->where('is_resolved', false);
         }])
+        ->with('roles')
         ->withCount([
             'billPlayers as bill_count' => function ($query) {
                 $query->whereHas('bill', function ($q) {
@@ -139,6 +140,26 @@ class UserController extends Controller
             'user' => $user,
             'debts' => $debts,
             'total_debt' => $totalDebt,
+        ]);
+    }
+
+    /**
+     * Assign roles to a user
+     */
+    public function assignRoles(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'role_ids' => 'required|array',
+            'role_ids.*' => 'exists:roles,id',
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->roles()->sync($request->role_ids);
+        $user->load('roles');
+
+        return response()->json([
+            'message' => 'Roles assigned successfully',
+            'user' => $user,
         ]);
     }
 }

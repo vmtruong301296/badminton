@@ -15,6 +15,7 @@ export const playersApi = {
   update: (id, data) => api.put(`/players/${id}`, data),
   delete: (id) => api.delete(`/players/${id}`),
   getDebts: (id) => api.get(`/players/${id}/debts`),
+  assignRoles: (id, roleIds) => api.post(`/players/${id}/roles`, { role_ids: roleIds }),
 };
 
 // Ratios
@@ -73,6 +74,21 @@ export const paymentAccountsApi = {
   create: (data) => api.post('/payment-accounts', data),
   update: (id, data) => api.put(`/payment-accounts/${id}`, data),
   delete: (id) => api.delete(`/payment-accounts/${id}`),
+};
+
+// Roles
+export const rolesApi = {
+  getAll: () => api.get('/roles'),
+  getById: (id) => api.get(`/roles/${id}`),
+  create: (data) => api.post('/roles', data),
+  update: (id, data) => api.put(`/roles/${id}`, data),
+  delete: (id) => api.delete(`/roles/${id}`),
+};
+
+// Permissions
+export const permissionsApi = {
+  getAll: (params) => api.get('/permissions', { params }),
+  getById: (id) => api.get(`/permissions/${id}`),
 };
 
 export default api;
