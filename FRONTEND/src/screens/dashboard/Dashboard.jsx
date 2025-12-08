@@ -284,9 +284,16 @@ export default function Dashboard() {
 
 	// Calculate displayed bills and total main bills count
 	const { displayedBills, totalMainBillsCount, totalPages } = useMemo(() => {
-		// Separate main bills and sub bills
-		const mainBills = bills.filter((bill) => !bill.parent_bill_id);
-		const subBills = bills.filter((bill) => bill.parent_bill_id);
+		// Sort all bills by date descending (newest first)
+		const sortedBills = [...bills].sort((a, b) => {
+			const dateA = a.date ? new Date(a.date) : new Date(0);
+			const dateB = b.date ? new Date(b.date) : new Date(0);
+			return dateB - dateA; // Descending order (newest first)
+		});
+
+		// Separate main bills and sub bills (after sorting)
+		const mainBills = sortedBills.filter((bill) => !bill.parent_bill_id);
+		const subBills = sortedBills.filter((bill) => bill.parent_bill_id);
 
 		// Calculate total pages
 		const totalPagesCount = Math.ceil(mainBills.length / filters.limit);
@@ -300,8 +307,13 @@ export default function Dashboard() {
 		const mainBillIds = new Set(paginatedMainBills.map((bill) => bill.id));
 		const relatedSubBills = subBills.filter((bill) => mainBillIds.has(bill.parent_bill_id));
 
-		// Combine: main bills first, then their sub bills
-		const displayed = [...paginatedMainBills, ...relatedSubBills];
+		// Combine and sort by date: main bills first, then their sub bills, all sorted by date
+		const combined = [...paginatedMainBills, ...relatedSubBills];
+		const displayed = combined.sort((a, b) => {
+			const dateA = a.date ? new Date(a.date) : new Date(0);
+			const dateB = b.date ? new Date(b.date) : new Date(0);
+			return dateB - dateA; // Descending order (newest first)
+		});
 
 		return {
 			displayedBills: displayed,
