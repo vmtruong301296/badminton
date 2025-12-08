@@ -13,12 +13,25 @@ export default function Dashboard() {
 		date_to: "",
 		player_id: "",
 		status: ["partial", "unpaid"], // Array of selected statuses: 'paid', 'partial', 'unpaid'
+		limit: 10, // Limit number of main bills to display
 	});
 	const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, billId: null });
+	const [markingPayment, setMarkingPayment] = useState(new Set()); // Track players being marked as paid
+	const [currentPage, setCurrentPage] = useState(1);
 
 	useEffect(() => {
 		loadBills();
+		setCurrentPage(1); // Reset to page 1 when filters change
 	}, [filters]);
+
+	// Adjust currentPage if it exceeds totalPages (e.g., when limit changes)
+	useEffect(() => {
+		const mainBills = bills.filter((bill) => !bill.parent_bill_id);
+		const totalPagesCount = Math.ceil(mainBills.length / filters.limit);
+		if (currentPage > totalPagesCount && totalPagesCount > 0) {
+			setCurrentPage(totalPagesCount);
+		}
+	}, [bills, filters.limit, currentPage]);
 
 	const loadBills = async () => {
 		try {
@@ -117,6 +130,48 @@ export default function Dashboard() {
 
 	const handleDeleteCancel = () => {
 		setDeleteConfirm({ isOpen: false, billId: null });
+	};
+
+	// Mark payment for all unpaid bills of a player
+	const handleMarkPlayerPayment = async (userId) => {
+		try {
+			setMarkingPayment((prev) => new Set(prev).add(userId));
+
+			// Find all bills where this player hasn't paid
+			const unpaidBills = allBills.filter((bill) => {
+				const player = bill.bill_players?.find((p) => p.user_id === userId);
+				return player && !player.is_paid;
+			});
+
+			// Mark payment for all unpaid bills
+			const promises = unpaidBills.map(async (bill) => {
+				try {
+					const player = bill.bill_players?.find((p) => p.user_id === userId);
+					if (player) {
+						await billsApi.markPayment(bill.id, userId, {
+							amount: (player.total_amount || 0) + (player.debt_amount || 0),
+							is_paid: true,
+						});
+					}
+				} catch (error) {
+					console.error(`Error marking payment for bill ${bill.id}:`, error);
+				}
+			});
+
+			await Promise.all(promises);
+
+			// Reload bills to update the list
+			await loadBills();
+		} catch (error) {
+			console.error("Error marking player payment:", error);
+			alert("Có lỗi xảy ra khi đánh dấu thanh toán");
+		} finally {
+			setMarkingPayment((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(userId);
+				return newSet;
+			});
+		}
 	};
 
 	// Format date to YYYY/MM/DD
@@ -219,8 +274,41 @@ export default function Dashboard() {
 				};
 			})
 			.filter((player) => player.totalAmount > 0)
-			.sort((a, b) => b.totalAmount - a.totalAmount); // Sort by total amount descending
+			.sort((a, b) => {
+				// Sort by latest unpaid date (descending - newest first)
+				const aLatestDate = a.unpaidDates && a.unpaidDates.length > 0 ? new Date(a.unpaidDates[0].date) : new Date(0);
+				const bLatestDate = b.unpaidDates && b.unpaidDates.length > 0 ? new Date(b.unpaidDates[0].date) : new Date(0);
+				return bLatestDate - aLatestDate; // Descending order (newest first)
+			});
 	}, [allBills]);
+
+	// Calculate displayed bills and total main bills count
+	const { displayedBills, totalMainBillsCount, totalPages } = useMemo(() => {
+		// Separate main bills and sub bills
+		const mainBills = bills.filter((bill) => !bill.parent_bill_id);
+		const subBills = bills.filter((bill) => bill.parent_bill_id);
+
+		// Calculate total pages
+		const totalPagesCount = Math.ceil(mainBills.length / filters.limit);
+
+		// Calculate pagination: get main bills for current page
+		const startIndex = (currentPage - 1) * filters.limit;
+		const endIndex = startIndex + filters.limit;
+		const paginatedMainBills = mainBills.slice(startIndex, endIndex);
+
+		// Get all sub bills that belong to the paginated main bills
+		const mainBillIds = new Set(paginatedMainBills.map((bill) => bill.id));
+		const relatedSubBills = subBills.filter((bill) => mainBillIds.has(bill.parent_bill_id));
+
+		// Combine: main bills first, then their sub bills
+		const displayed = [...paginatedMainBills, ...relatedSubBills];
+
+		return {
+			displayedBills: displayed,
+			totalMainBillsCount: mainBills.length,
+			totalPages: totalPagesCount,
+		};
+	}, [bills, filters.limit, currentPage]);
 
 	return (
 		<div>
@@ -233,7 +321,7 @@ export default function Dashboard() {
 
 			{/* Filters */}
 			<div className="bg-white p-4 rounded-lg shadow mb-6">
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+				<div className="grid grid-cols-1 md:grid-cols-5 gap-4">
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
 						<input
@@ -302,9 +390,22 @@ export default function Dashboard() {
 							</label>
 						</div>
 					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700 mb-1">Số bill hiển thị</label>
+						<select
+							value={filters.limit}
+							onChange={(e) => setFilters({ ...filters, limit: parseInt(e.target.value) })}
+							className="w-full px-3 py-2 border border-gray-300 rounded-md">
+							<option value={10}>10</option>
+							<option value={20}>20</option>
+							<option value={30}>30</option>
+							<option value={40}>40</option>
+							<option value={50}>50</option>
+						</select>
+					</div>
 					<div className="flex items-end">
 						<button
-							onClick={() => setFilters({ date_from: "", date_to: "", player_id: "", status: [] })}
+							onClick={() => setFilters({ date_from: "", date_to: "", player_id: "", status: [], limit: 10 })}
 							className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
 							Xóa bộ lọc
 						</button>
@@ -318,7 +419,7 @@ export default function Dashboard() {
 				<div className="lg:col-span-3">
 					{loading ? (
 						<div className="text-center py-8">Đang tải...</div>
-					) : bills.length === 0 ? (
+					) : displayedBills.length === 0 ? (
 						<div className="text-center py-8 text-gray-500">Chưa có bill nào</div>
 					) : (
 						<div className="bg-white shadow rounded-lg overflow-hidden">
@@ -334,7 +435,7 @@ export default function Dashboard() {
 									</tr>
 								</thead>
 								<tbody className="bg-white divide-y divide-gray-200">
-									{bills.map((bill) => {
+									{displayedBills.map((bill) => {
 										const isWarning = isOverdueWarning(bill);
 										const allPaid = bill.bill_players?.every((p) => p.is_paid) && bill.bill_players?.length > 0;
 										return (
@@ -392,21 +493,82 @@ export default function Dashboard() {
 
 							{/* Legend/Chú thích */}
 							<div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-								<div className="flex flex-wrap items-center gap-4 text-sm">
-									<div className="flex items-center space-x-2">
-										<div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-										<span className="text-gray-700">Bill quá hạn 1 tuần và còn người chưa thanh toán</span>
+								<div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+									<div className="flex flex-wrap items-center gap-4">
+										<div className="flex items-center space-x-2">
+											<div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+											<span className="text-gray-700">Bill quá hạn 1 tuần và còn người chưa thanh toán</span>
+										</div>
+										<div className="flex items-center space-x-2">
+											<div className="w-4 h-4 bg-green-50 border border-green-200 rounded"></div>
+											<span className="text-gray-700">Bill đã thanh toán</span>
+										</div>
+										<div className="flex items-center space-x-2">
+											<div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
+											<span className="text-gray-700">Bill con</span>
+										</div>
 									</div>
-									<div className="flex items-center space-x-2">
-										<div className="w-4 h-4 bg-green-50 border border-green-200 rounded"></div>
-										<span className="text-gray-700">Bill đã thanh toán</span>
-									</div>
-									<div className="flex items-center space-x-2">
-										<div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
-										<span className="text-gray-700">Bill con</span>
+									<div className="text-sm font-semibold text-gray-700">
+										Tổng số bill: {totalMainBillsCount}
 									</div>
 								</div>
 							</div>
+
+							{/* Pagination */}
+							{totalPages > 1 && (
+								<div className="bg-white px-6 py-4 border-t border-gray-200">
+									<div className="flex items-center justify-between">
+										<div className="text-sm text-gray-700">
+											Trang {currentPage} / {totalPages}
+										</div>
+										<div className="flex items-center space-x-2">
+											<button
+												onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+												disabled={currentPage === 1}
+												className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+												Trước
+											</button>
+											{/* Page numbers */}
+											<div className="flex items-center space-x-1">
+												{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+													// Show first page, last page, current page, and pages around current
+													if (
+														page === 1 ||
+														page === totalPages ||
+														(page >= currentPage - 1 && page <= currentPage + 1)
+													) {
+														return (
+															<button
+																key={page}
+																onClick={() => setCurrentPage(page)}
+																className={`px-3 py-1 text-sm border rounded-md ${
+																	currentPage === page
+																		? "bg-blue-600 text-white border-blue-600"
+																		: "border-gray-300 hover:bg-gray-50"
+																}`}>
+																{page}
+															</button>
+														);
+													} else if (page === currentPage - 2 || page === currentPage + 2) {
+														return (
+															<span key={page} className="px-2 text-gray-500">
+																...
+															</span>
+														);
+													}
+													return null;
+												})}
+											</div>
+											<button
+												onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+												disabled={currentPage === totalPages}
+												className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+												Sau
+											</button>
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 					)}
 				</div>
@@ -423,26 +585,43 @@ export default function Dashboard() {
 							) : unpaidPlayers.length === 0 ? (
 								<div className="px-6 py-8 text-center text-gray-500">Không có người chơi nào chưa thanh toán</div>
 							) : (
-								unpaidPlayers.map((player) => (
-									<div key={player.userId} className="px-6 py-4 hover:bg-gray-50">
-										<div className="mb-2">
-											<div className="font-semibold text-gray-900 mb-1">{player.name}</div>
-											<div className="text-sm text-gray-600 mb-2">
-												Tổng số tiền: <span className="font-semibold text-red-600">{formatCurrencyRounded(player.totalAmount)}</span>
+								unpaidPlayers.map((player) => {
+									const isMarking = markingPayment.has(player.userId);
+									return (
+										<div key={player.userId} className="px-6 py-3 hover:bg-gray-50 relative">
+											<div className="pr-8 mb-2">
+												<div className="text-sm font-semibold text-gray-900">
+													{player.name}: <span className="text-red-600">{formatCurrencyRounded(player.totalAmount)}</span>
+												</div>
 											</div>
-										</div>
-										<div className="text-sm">
-											<div className="text-gray-700 font-medium mb-1">Ds ngày thiếu:</div>
-											<div className="space-y-1 pl-2">
-												{player.unpaidDates.map((dateItem, idx) => (
-													<div key={idx} className="text-gray-600">
-														{formatDateForUnpaid(dateItem.date)} : {formatCurrencyRounded(dateItem.amount)}
-													</div>
-												))}
+											<div className="text-sm pr-8">
+												<div className="text-gray-700 font-medium mb-1">DS ngày thiếu:</div>
+												<div className="space-y-1 pl-2">
+													{player.unpaidDates.map((dateItem, idx) => (
+														<div key={idx} className="text-gray-600">
+															{formatDateForUnpaid(dateItem.date)} : {formatCurrencyRounded(dateItem.amount)}
+														</div>
+													))}
+												</div>
 											</div>
+											<div className="absolute top-3 right-4">
+												<input
+													type="checkbox"
+													checked={false}
+													onChange={() => handleMarkPlayerPayment(player.userId)}
+													disabled={isMarking}
+													className="w-5 h-5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+													title="Đánh dấu thanh toán tất cả bills"
+												/>
+											</div>
+											{isMarking && (
+												<div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+													<div className="text-sm text-gray-600">Đang xử lý...</div>
+												</div>
+											)}
 										</div>
-									</div>
-								))
+									);
+								})
 							)}
 						</div>
 					</div>
