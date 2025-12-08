@@ -4,6 +4,7 @@ import { billsApi, paymentAccountsApi } from '../../services/api';
 import { formatCurrency, formatCurrencyRounded, formatDate, formatDateDisplay, formatRatio } from '../../utils/formatters';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import PayOldBillsDialog from '../../components/common/PayOldBillsDialog';
+import SelectPaymentAccountDialog from '../../components/common/SelectPaymentAccountDialog';
 import BillContent from '../../components/bill/BillContent';
 import BillExport from '../../components/bill/BillExport';
 import html2canvas from 'html2canvas';
@@ -19,6 +20,8 @@ export default function BillDetail() {
   const [paymentAccounts, setPaymentAccounts] = useState([]);
   const [paymentAccountImages, setPaymentAccountImages] = useState({}); // Store base64 images: { accountId: base64 }
   const [exporting, setExporting] = useState(false);
+  const [selectAccountDialog, setSelectAccountDialog] = useState({ isOpen: false });
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
   const exportRef = useRef(null);
 
   useEffect(() => {
@@ -296,8 +299,35 @@ export default function BillDetail() {
     }
   };
 
-  const handleExportBill = async () => {
-    if (!bill || !exportRef.current) return;
+  const handleExportBill = () => {
+    if (!bill) return;
+    // Mở modal chọn tài khoản
+    setSelectAccountDialog({ isOpen: true });
+  };
+
+  const handleSelectAccountConfirm = async (accountId) => {
+    setSelectAccountDialog({ isOpen: false });
+    // Gọi hàm xuất với tài khoản đã chọn (hàm này sẽ set selectedAccountId)
+    await executeExportBill(accountId);
+  };
+
+  const handleSelectAccountCancel = () => {
+    setSelectAccountDialog({ isOpen: false });
+  };
+
+  const executeExportBill = async (accountId) => {
+    if (!bill) return;
+
+    // Đảm bảo selectedAccountId đã được set và component đã render
+    setSelectedAccountId(accountId);
+    // Đợi component re-render với tài khoản mới
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    if (!exportRef.current) {
+      console.error('Export ref not available');
+      setExporting(false);
+      return;
+    }
 
     try {
       setExporting(true);
@@ -736,11 +766,24 @@ export default function BillDetail() {
       />
 
       {/* Hidden export component for image generation */}
-      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-        <div ref={exportRef}>
-          <BillExport bill={bill} paymentAccounts={paymentAccounts} paymentAccountImages={paymentAccountImages} />
+      {selectedAccountId && (
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+          <div ref={exportRef}>
+            <BillExport 
+              bill={bill} 
+              paymentAccounts={paymentAccounts.filter(acc => acc.id === selectedAccountId)} 
+              paymentAccountImages={paymentAccountImages} 
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      <SelectPaymentAccountDialog
+        isOpen={selectAccountDialog.isOpen}
+        onClose={handleSelectAccountCancel}
+        onConfirm={handleSelectAccountConfirm}
+        paymentAccounts={paymentAccounts}
+      />
     </div>
   );
 }
