@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\MenuController;
@@ -11,41 +12,49 @@ use App\Http\Controllers\Api\ShuttleTypeController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Players (Người chơi)
-Route::apiResource('players', UserController::class);
-Route::get('players/{id}/debts', [UserController::class, 'debts']);
-Route::post('players/{id}/roles', [UserController::class, 'assignRoles']);
+// Authentication (Public routes)
+Route::post('login', [AuthController::class, 'login']);
+Route::post('logout', [AuthController::class, 'logout'])->middleware('auth');
+Route::get('me', [AuthController::class, 'me'])->middleware('auth');
 
-// Ratios (Mức tính)
-Route::apiResource('ratios', RatioController::class);
-Route::get('ratios/defaults', [RatioController::class, 'defaults']);
+// Protected routes - require authentication
+Route::middleware('auth')->group(function () {
+	// Players (Người chơi)
+	Route::apiResource('players', UserController::class);
+	Route::get('players/{id}/debts', [UserController::class, 'debts']);
+	Route::post('players/{id}/roles', [UserController::class, 'assignRoles']);
 
-// Menus (Menu nước)
-Route::apiResource('menus', MenuController::class);
+	// Ratios (Mức tính)
+	Route::apiResource('ratios', RatioController::class);
+	Route::get('ratios/defaults', [RatioController::class, 'defaults']);
 
-// Shuttles (Loại quả cầu)
-Route::apiResource('shuttles', ShuttleTypeController::class);
+	// Menus (Menu nước)
+	Route::apiResource('menus', MenuController::class);
 
-// Bills (Phiếu thu)
-Route::apiResource('bills', BillController::class);
-Route::post('bills/{id}/players/{player_id}/pay', [BillController::class, 'markPayment']);
-Route::get('bills/{id}/sub-bills', [BillController::class, 'subBills']);
-Route::post('bills/{id}/sub-bills', [BillController::class, 'createSubBill']);
+	// Shuttles (Loại quả cầu)
+	Route::apiResource('shuttles', ShuttleTypeController::class);
 
-// Debts (Nợ)
-Route::apiResource('debts', DebtController::class);
+	// Bills (Phiếu thu)
+	Route::apiResource('bills', BillController::class);
+	Route::post('bills/{id}/players/{player_id}/pay', [BillController::class, 'markPayment']);
+	Route::get('bills/{id}/sub-bills', [BillController::class, 'subBills']);
+	Route::post('bills/{id}/sub-bills', [BillController::class, 'createSubBill']);
 
-// Payment Accounts (Tài khoản nhận tiền)
-// POST route for updating with file upload (must be before apiResource to avoid route conflict)
-Route::post('payment-accounts/{id}/update', [PaymentAccountController::class, 'update']);
-Route::apiResource('payment-accounts', PaymentAccountController::class);
+	// Debts (Nợ)
+	Route::apiResource('debts', DebtController::class);
 
-// Roles (Quyền)
-Route::apiResource('roles', RoleController::class);
+	// Payment Accounts (Tài khoản nhận tiền)
+	// POST route for updating with file upload (must be before apiResource to avoid route conflict)
+	Route::post('payment-accounts/{id}/update', [PaymentAccountController::class, 'update']);
+	Route::apiResource('payment-accounts', PaymentAccountController::class);
 
-// Permissions (Quyền chức năng)
-Route::get('permissions', [PermissionController::class, 'index']);
-Route::get('permissions/{id}', [PermissionController::class, 'show']);
+	// Roles (Quyền)
+	Route::apiResource('roles', RoleController::class);
+
+	// Permissions (Quyền chức năng)
+	Route::get('permissions', [PermissionController::class, 'index']);
+	Route::get('permissions/{id}', [PermissionController::class, 'show']);
+});
 
 // Serve images with CORS headers
 Route::get('images/{path}', function ($path) {

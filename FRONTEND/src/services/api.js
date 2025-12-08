@@ -5,6 +5,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for session-based authentication
 });
 
 // Players
@@ -89,6 +90,13 @@ export const rolesApi = {
 export const permissionsApi = {
   getAll: (params) => api.get('/permissions', { params }),
   getById: (id) => api.get(`/permissions/${id}`),
+};
+
+// Auth
+export const authApi = {
+  login: (email, password) => api.post('/login', { email, password }),
+  logout: () => api.post('/logout'),
+  me: () => api.get('/me'),
 };
 
 export default api;

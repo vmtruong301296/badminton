@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { billsApi } from "../../services/api";
 import { formatCurrencyRounded, formatDate } from "../../utils/formatters";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function Dashboard() {
+	const { hasPermission } = useAuth();
 	const [bills, setBills] = useState([]);
 	const [allBills, setAllBills] = useState([]); // Store all bills for unpaid players calculation
 	const [loading, setLoading] = useState(true);
@@ -326,9 +328,11 @@ export default function Dashboard() {
 		<div>
 			<div className="flex justify-between items-center mb-6">
 				<h2 className="text-2xl font-bold text-gray-900">Danh sách Bills</h2>
-				<Link to="/bills/create" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-					➕ Tạo Bill mới
-				</Link>
+				{hasPermission('bills.create') && (
+					<Link to="/bills/create" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+						➕ Tạo Bill mới
+					</Link>
+				)}
 			</div>
 
 			{/* Filters */}
@@ -489,12 +493,16 @@ export default function Dashboard() {
 												</td>
 												<td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
 													<div className="flex space-x-3">
-														<Link to={`/bills/${bill.id}`} className="text-blue-600 hover:text-blue-900">
-															Chi tiết
-														</Link>
-														<button type="button" onClick={() => handleDeleteClick(bill.id)} className="text-red-600 hover:text-red-900">
-															Xóa
-														</button>
+														{hasPermission('bills.view') && (
+															<Link to={`/bills/${bill.id}`} className="text-blue-600 hover:text-blue-900">
+																Chi tiết
+															</Link>
+														)}
+														{hasPermission('bills.delete') && (
+															<button type="button" onClick={() => handleDeleteClick(bill.id)} className="text-red-600 hover:text-red-900">
+																Xóa
+															</button>
+														)}
 													</div>
 												</td>
 											</tr>
@@ -616,16 +624,18 @@ export default function Dashboard() {
 													))}
 												</div>
 											</div>
-											<div className="absolute top-3 right-4">
-												<input
-													type="checkbox"
-													checked={false}
-													onChange={() => handleMarkPlayerPayment(player.userId)}
-													disabled={isMarking}
-													className="w-5 h-5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-													title="Đánh dấu thanh toán tất cả bills"
-												/>
-											</div>
+											{hasPermission('bills.mark_payment') && (
+												<div className="absolute top-3 right-4">
+													<input
+														type="checkbox"
+														checked={false}
+														onChange={() => handleMarkPlayerPayment(player.userId)}
+														disabled={isMarking}
+														className="w-5 h-5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+														title="Đánh dấu thanh toán tất cả bills"
+													/>
+												</div>
+											)}
 											{isMarking && (
 												<div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
 													<div className="text-sm text-gray-600">Đang xử lý...</div>
