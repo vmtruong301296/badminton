@@ -443,20 +443,20 @@ export default function BillDetail() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="px-2 sm:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
         <div>
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-xl sm:text-2xl font-bold">
             Chi tiết Bill #{bill.id}
           </h2>
-          <p className="text-gray-600">Ngày: {formatDate(bill.date)}</p>
+          <p className="text-sm sm:text-base text-gray-600">Ngày: {formatDate(bill.date)}</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleExportBill}
             disabled={exporting}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {exporting ? 'Đang xuất...' : '📄 Xuất Bill'}
           </button>
@@ -464,7 +464,7 @@ export default function BillDetail() {
             <button
               type="button"
               onClick={() => navigate(`/bills/create?parent_id=${id}`)}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm sm:text-base"
             >
               + Tạo Bill con
             </button>
@@ -472,14 +472,14 @@ export default function BillDetail() {
           <button
             type="button"
             onClick={handleDeleteClick}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm sm:text-base"
           >
             Xóa bill
           </button>
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
           >
             ← Quay lại
           </button>
@@ -488,11 +488,11 @@ export default function BillDetail() {
 
       {/* Layout 2 cột nếu có sub-bills, 1 cột nếu không */}
       {!bill.parent_bill_id && bill.sub_bills && bill.sub_bills.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:h-[calc(100vh-200px)]">
           {/* Cột trái: Bill chính */}
-          <div className="bg-gray-50 p-4 rounded-lg shadow border-2 border-blue-200 flex flex-col">
+          <div className="bg-gray-50 p-3 sm:p-4 rounded-lg shadow border-2 border-blue-200 flex flex-col">
             <div className="mb-3 pb-3 border-b border-blue-300">
-              <h3 className="text-lg font-bold text-blue-900">Bill chính #{bill.id}</h3>
+              <h3 className="text-base sm:text-lg font-bold text-blue-900">Bill chính #{bill.id}</h3>
             </div>
             <BillContent
               bill={bill}
@@ -504,11 +504,11 @@ export default function BillDetail() {
           </div>
 
           {/* Cột phải: Bill con */}
-          <div className="space-y-4 overflow-y-auto">
+          <div className="space-y-3 sm:space-y-4 lg:overflow-y-auto">
             {bill.sub_bills.map((subBill) => (
-              <div key={subBill.id} className="bg-gray-50 p-4 rounded-lg shadow border-2 border-green-200 flex flex-col">
+              <div key={subBill.id} className="bg-gray-50 p-3 sm:p-4 rounded-lg shadow border-2 border-green-200 flex flex-col">
                 <div className="mb-3 pb-3 border-b border-green-300">
-                  <h3 className="text-lg font-bold text-green-900">
+                  <h3 className="text-base sm:text-lg font-bold text-green-900">
                     Bill con #{subBill.id}{subBill.note ? ` - ${subBill.note}` : ''}
                   </h3>
                   <p className="text-xs text-gray-600">Ngày: {formatDate(subBill.date)}</p>
@@ -521,53 +521,53 @@ export default function BillDetail() {
       ) : (
         <>
           {/* Bill Info và Shuttles - Layout 2 cột */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             {/* Bill Info - Bên trái */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4">Thông tin Bill</h3>
-              <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Thông tin Bill</h3>
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
               <div>
-                <div className="text-sm text-gray-600">Tổng tiền sân</div>
-                <div className="text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Tổng tiền sân</div>
+                <div className="text-base sm:text-lg font-semibold">{formatCurrencyRounded(bill.court_total)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Tổng tiền cầu</div>
-                <div className="text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Tổng tiền cầu</div>
+                <div className="text-base sm:text-lg font-semibold">{formatCurrencyRounded(bill.total_shuttle_price)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Tổng tiền</div>
-                  <div className="text-xl font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Tổng tiền</div>
+                  <div className="text-lg sm:text-xl font-bold text-blue-600">{formatCurrencyRounded(bill.total_amount)}</div>
               </div>
             </div>
             {bill.note && (
-              <div className="mt-4 pt-4 border-t">
-                <div className="text-sm text-gray-600">Ghi chú:</div>
-                <div className="text-gray-900">{bill.note}</div>
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+                <div className="text-xs sm:text-sm text-gray-600">Ghi chú:</div>
+                <div className="text-sm sm:text-base text-gray-900">{bill.note}</div>
               </div>
             )}
           </div>
 
             {/* Shuttles - Bên phải */}
           {bill.bill_shuttles && bill.bill_shuttles.length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4">Chi tiết cầu</h3>
+              <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Chi tiết cầu</h3>
                 <div className="overflow-x-auto">
-              <table className="min-w-full">
+              <table className="min-w-full text-sm sm:text-base">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2">Loại cầu</th>
-                    <th className="text-right py-2">Số lượng</th>
-                    <th className="text-right py-2">Đơn giá</th>
-                    <th className="text-right py-2">Thành tiền</th>
+                    <th className="text-left py-2 text-xs sm:text-sm">Loại cầu</th>
+                    <th className="text-right py-2 text-xs sm:text-sm">Số lượng</th>
+                    <th className="text-right py-2 text-xs sm:text-sm">Đơn giá</th>
+                    <th className="text-right py-2 text-xs sm:text-sm">Thành tiền</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bill.bill_shuttles.map((shuttle, index) => (
                     <tr key={index} className="border-b">
-                      <td className="py-2">{shuttle.shuttle_type?.name}</td>
-                      <td className="text-right py-2">{shuttle.quantity}</td>
-                      <td className="text-right py-2">{formatCurrencyRounded(shuttle.price_each)}</td>
-                      <td className="text-right py-2 font-semibold">
+                      <td className="py-2 text-xs sm:text-sm">{shuttle.shuttle_type?.name}</td>
+                      <td className="text-right py-2 text-xs sm:text-sm">{shuttle.quantity}</td>
+                      <td className="text-right py-2 text-xs sm:text-sm">{formatCurrencyRounded(shuttle.price_each)}</td>
+                      <td className="text-right py-2 font-semibold text-xs sm:text-sm">
                         {formatCurrencyRounded(shuttle.subtotal)}
                       </td>
                     </tr>
@@ -580,9 +580,11 @@ export default function BillDetail() {
           </div>
 
           {/* Players Table */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold mb-4">Chi tiết người chơi</h3>
-            <div className="overflow-x-auto">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Chi tiết người chơi</h3>
+            
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b">
@@ -713,17 +715,143 @@ export default function BillDetail() {
                 </tfoot>
               </table>
             </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {(() => {
+                // Sort players: unpaid males -> unpaid females -> paid males -> paid females
+                const sortedPlayers = [...(bill.bill_players || [])].sort((a, b) => {
+                  const aIsPaid = a.is_paid || false;
+                  const bIsPaid = b.is_paid || false;
+                  const aGender = a.user?.gender || '';
+                  const bGender = b.user?.gender || '';
+                  
+                  // First sort by payment status: unpaid first (false < true)
+                  if (aIsPaid !== bIsPaid) {
+                    return aIsPaid ? 1 : -1;
+                  }
+                  
+                  // If same payment status, sort by gender: male first
+                  if (aGender !== bGender) {
+                    if (aGender === 'male') return -1;
+                    if (bGender === 'male') return 1;
+                  }
+                  
+                  return 0;
+                });
+                
+                return sortedPlayers.map((player, index) => (
+                  <div
+                    key={player.id}
+                    className={`border rounded-lg p-3 ${
+                      !player.is_paid ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-gray-500">#{index + 1}</span>
+                          <h4 className="font-semibold text-gray-900">{player.user?.name}</h4>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Mức tính: {formatRatio(player.ratio_value)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatCurrencyRounded((player.total_amount || 0) + (player.debt_amount || 0))}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={player.is_paid || false}
+                          onChange={(e) => {
+                            if (player.is_paid && !e.target.checked) {
+                              e.preventDefault();
+                              handleMarkPayment(player.user_id, false);
+                            } else {
+                              handleMarkPayment(player.user_id, e.target.checked);
+                            }
+                          }}
+                          className="w-5 h-5 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                    
+                    {player.menu_extra_total > 0 && (
+                      <div className="mb-2 pb-2 border-b border-gray-200">
+                        <div className="text-xs text-gray-600 mb-1">Chi phí thêm:</div>
+                        <div className="text-sm font-semibold mb-1">
+                          {formatCurrencyRounded(player.menu_extra_total)}
+                        </div>
+                        <div className="text-xs text-gray-600 space-y-0.5">
+                          {player.bill_player_menus?.map((menuItem, idx) => (
+                            <div key={idx}>
+                              {menuItem.menu?.name} × {menuItem.quantity} = {formatCurrency(menuItem.subtotal)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {player.debt_amount > 0 && (
+                      <div className="mb-2 pb-2 border-b border-gray-200">
+                        <div className="text-xs text-gray-600 mb-1">Tiền nợ:</div>
+                        <div className="text-sm font-semibold mb-1">
+                          {formatCurrencyRounded(player.debt_amount)}
+                        </div>
+                        {player.debt_details && player.debt_details.length > 0 && (
+                          <div className="text-xs text-gray-600 space-y-1">
+                            {player.debt_details.map((debt, idx) => (
+                              <div key={idx} className="border border-gray-300 rounded p-1.5 bg-gray-50">
+                                {debt.parent_amount !== null && (
+                                  <div className="font-medium">
+                                    {formatDateDisplay(debt.date)}: {formatCurrencyRounded(debt.parent_amount)}
+                                  </div>
+                                )}
+                                {debt.sub_bills && debt.sub_bills.length > 0 && debt.sub_bills.map((subBill, subIdx) => (
+                                  <div key={subIdx} className="pl-2 mt-0.5">
+                                    {subBill.note || 'Bill con'}: {formatCurrencyRounded(subBill.amount)}
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {player.paid_at && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        Đã thanh toán: {new Date(player.paid_at).toLocaleString('vi-VN')}
+                      </div>
+                    )}
+                  </div>
+                ));
+              })()}
+              
+              {/* Total Summary */}
+              <div className="border-t-2 pt-3 mt-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-900">Tổng cộng:</span>
+                  <span className="font-bold text-gray-900">
+                    {formatCurrencyRounded(
+                      bill.bill_players?.reduce((sum, p) => sum + (p.total_amount || 0) + (p.debt_amount || 0), 0) || 0
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       )}
 
       {/* Parent Bill Info - Only show if this is a sub-bill */}
       {bill.parent_bill_id && bill.parent_bill && (
-        <div className="bg-blue-50 p-6 rounded-lg shadow mt-6 border-2 border-blue-200">
-          <div className="flex justify-between items-center">
+        <div className="bg-blue-50 p-4 sm:p-6 rounded-lg shadow mt-4 sm:mt-6 border-2 border-blue-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
             <div>
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Bill con của</h3>
-              <p className="text-sm text-gray-700">
+              <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">Bill con của</h3>
+              <p className="text-xs sm:text-sm text-gray-700">
                 Bill chính #{bill.parent_bill.id} |
                 Ngày: {formatDate(bill.parent_bill.date)} |
                 Tổng tiền: {formatCurrencyRounded(bill.parent_bill.total_amount)}
@@ -732,7 +860,7 @@ export default function BillDetail() {
             <button
               type="button"
               onClick={() => navigate(`/bills/${bill.parent_bill.id}`)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm sm:text-base"
             >
               Xem Bill chính
             </button>
