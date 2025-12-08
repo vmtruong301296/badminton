@@ -325,19 +325,120 @@ export default function Dashboard() {
 	}, [bills, filters.limit, currentPage]);
 
 	return (
-		<div>
-			<div className="flex justify-between items-center mb-6">
-				<h2 className="text-2xl font-bold text-gray-900">Danh sách Bills</h2>
+		<div className="px-2 sm:px-0">
+			<div className="flex flex-row justify-between items-center mb-6 gap-4">
+				<h2 className="text-xl sm:text-2xl font-bold text-gray-900">Danh sách Bills</h2>
 				{hasPermission('bills.create') && (
-					<Link to="/bills/create" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-						➕ Tạo Bill mới
+					<Link to="/bills/create" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm sm:text-base whitespace-nowrap">
+						➕ Tạo Bill
 					</Link>
 				)}
 			</div>
 
 			{/* Filters */}
 			<div className="bg-white p-4 rounded-lg shadow mb-6">
-				<div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+				{/* Mobile Layout */}
+				<div className="sm:hidden space-y-4">
+					{/* Row 1: Từ ngày bên trái, Đến ngày bên phải */}
+					<div className="flex gap-4">
+						<div className="flex-1">
+							<label className="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
+							<input
+								type="date"
+								value={filters.date_from}
+								onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
+								className="w-full px-3 py-2 border border-gray-300 rounded-md"
+							/>
+						</div>
+						<div className="flex-1">
+							<label className="block text-sm font-medium text-gray-700 mb-1">Đến ngày</label>
+							<input
+								type="date"
+								value={filters.date_to}
+								onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
+								className="w-full px-3 py-2 border border-gray-300 rounded-md"
+							/>
+						</div>
+					</div>
+					{/* Row 2: Trạng thái bên trái, Số bill hiển thị và Nút xóa bộ lọc bên phải */}
+					<div className="flex gap-4">
+						<div className="flex-1">
+							<label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+							<div className="space-y-2">
+								<label className="flex items-center">
+									<input
+										type="checkbox"
+										checked={filters.status.includes("paid")}
+										onChange={(e) => {
+											if (e.target.checked) {
+												setFilters({ ...filters, status: [...filters.status, "paid"] });
+											} else {
+												setFilters({ ...filters, status: filters.status.filter((s) => s !== "paid") });
+											}
+										}}
+										className="mr-2"
+									/>
+									<span className="text-sm text-gray-700">Đã thanh toán</span>
+								</label>
+								<label className="flex items-center">
+									<input
+										type="checkbox"
+										checked={filters.status.includes("partial")}
+										onChange={(e) => {
+											if (e.target.checked) {
+												setFilters({ ...filters, status: [...filters.status, "partial"] });
+											} else {
+												setFilters({ ...filters, status: filters.status.filter((s) => s !== "partial") });
+											}
+										}}
+										className="mr-2"
+									/>
+									<span className="text-sm text-gray-700">Thanh toán 1 phần</span>
+								</label>
+								<label className="flex items-center">
+									<input
+										type="checkbox"
+										checked={filters.status.includes("unpaid")}
+										onChange={(e) => {
+											if (e.target.checked) {
+												setFilters({ ...filters, status: [...filters.status, "unpaid"] });
+											} else {
+												setFilters({ ...filters, status: filters.status.filter((s) => s !== "unpaid") });
+											}
+										}}
+										className="mr-2"
+									/>
+									<span className="text-sm text-gray-700">Chưa thanh toán</span>
+								</label>
+							</div>
+						</div>
+						<div className="flex-1 flex flex-col gap-2">
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">Số bill hiển thị</label>
+								<select
+									value={filters.limit}
+									onChange={(e) => setFilters({ ...filters, limit: parseInt(e.target.value) })}
+									className="w-full px-3 py-2 border border-gray-300 rounded-md">
+									<option value={10}>10</option>
+									<option value={20}>20</option>
+									<option value={30}>30</option>
+									<option value={40}>40</option>
+									<option value={50}>50</option>
+								</select>
+							</div>
+							<div className="flex items-end">
+								<button
+									onClick={() => setFilters({ date_from: "", date_to: "", player_id: "", status: [], limit: 10 })}
+									className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+									Xóa bộ lọc
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Desktop Layout */}
+				<div className="hidden sm:grid grid-cols-2 lg:grid-cols-5 gap-4">
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
 						<input
@@ -356,7 +457,7 @@ export default function Dashboard() {
 							className="w-full px-3 py-2 border border-gray-300 rounded-md"
 						/>
 					</div>
-					<div>
+					<div className="sm:col-span-2 lg:col-span-1">
 						<label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
 						<div className="space-y-2">
 							<label className="flex items-center">
@@ -419,10 +520,10 @@ export default function Dashboard() {
 							<option value={50}>50</option>
 						</select>
 					</div>
-					<div className="flex items-end">
+					<div className="sm:col-span-2 lg:col-span-1 flex items-end">
 						<button
 							onClick={() => setFilters({ date_from: "", date_to: "", player_id: "", status: [], limit: 10 })}
-							className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+							className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
 							Xóa bộ lọc
 						</button>
 					</div>
@@ -439,96 +540,167 @@ export default function Dashboard() {
 						<div className="text-center py-8 text-gray-500">Chưa có bill nào</div>
 					) : (
 						<div className="bg-white shadow rounded-lg overflow-hidden">
-							<table className="min-w-full divide-y divide-gray-200">
-								<thead className="bg-gray-50">
-									<tr>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chưa TT</th>
-										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-									</tr>
-								</thead>
-								<tbody className="bg-white divide-y divide-gray-200">
-									{displayedBills.map((bill) => {
-										const isWarning = isOverdueWarning(bill);
-										const allPaid = bill.bill_players?.every((p) => p.is_paid) && bill.bill_players?.length > 0;
-										return (
-											<tr
-												key={bill.id}
-												className={`hover:bg-gray-50 ${
-													isWarning
-														? "bg-red-100 hover:bg-red-200"
-														: allPaid
-														? "bg-green-50 hover:bg-green-100"
-														: bill.parent_bill_id
-														? "bg-blue-50"
-														: ""
-												}`}>
-												<td className="px-6 py-4 whitespace-nowrap">
-													{bill.parent_bill_id ? (
-														<div className="flex items-center space-x-2">
-															<span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Bill con</span>
-															{bill.parent_bill && (
-																<Link
-																	to={`/bills/${bill.parent_bill.id}`}
-																	className="text-xs text-blue-600 hover:text-blue-900 hover:underline"
-																	title="Xem bill chính">
-																	{formatDate(bill.parent_bill.date)}
+							{/* Desktop Table View */}
+							<div className="hidden md:block overflow-x-auto">
+								<table className="min-w-full divide-y divide-gray-200">
+									<thead className="bg-gray-50">
+										<tr>
+											<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
+											<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
+											<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
+											<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+											<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chưa TT</th>
+											<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+										</tr>
+									</thead>
+									<tbody className="bg-white divide-y divide-gray-200">
+										{displayedBills.map((bill) => {
+											const isWarning = isOverdueWarning(bill);
+											const allPaid = bill.bill_players?.every((p) => p.is_paid) && bill.bill_players?.length > 0;
+											return (
+												<tr
+													key={bill.id}
+													className={`hover:bg-gray-50 ${
+														isWarning
+															? "bg-red-100 hover:bg-red-200"
+															: allPaid
+															? "bg-green-50 hover:bg-green-100"
+															: bill.parent_bill_id
+															? "bg-blue-50"
+															: ""
+													}`}>
+													<td className="px-6 py-4 whitespace-nowrap">
+														{bill.parent_bill_id ? (
+															<div className="flex items-center space-x-2">
+																<span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Bill con</span>
+																{bill.parent_bill && (
+																	<Link
+																		to={`/bills/${bill.parent_bill.id}`}
+																		className="text-xs text-blue-600 hover:text-blue-900 hover:underline"
+																		title="Xem bill chính">
+																		{formatDate(bill.parent_bill.date)}
+																	</Link>
+																)}
+															</div>
+														) : (
+															<span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Bill chính</span>
+														)}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(bill.date)}</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrencyRounded(bill.total_amount)}</td>
+													<td className="px-6 py-4 whitespace-nowrap">
+														<span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(bill)}`}>{getStatusText(bill)}</span>
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+														{bill.bill_players?.filter((p) => !p.is_paid).length || 0}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+														<div className="flex space-x-3">
+															{hasPermission('bills.view') && (
+																<Link to={`/bills/${bill.id}`} className="text-blue-600 hover:text-blue-900">
+																	Chi tiết
 																</Link>
 															)}
+															{hasPermission('bills.delete') && (
+																<button type="button" onClick={() => handleDeleteClick(bill.id)} className="text-red-600 hover:text-red-900">
+																	Xóa
+																</button>
+															)}
 														</div>
-													) : (
-														<span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Bill chính</span>
-													)}
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(bill.date)}</td>
-												<td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrencyRounded(bill.total_amount)}</td>
-												<td className="px-6 py-4 whitespace-nowrap">
-													<span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(bill)}`}>{getStatusText(bill)}</span>
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-													{bill.bill_players?.filter((p) => !p.is_paid).length || 0}
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-													<div className="flex space-x-3">
-														{hasPermission('bills.view') && (
-															<Link to={`/bills/${bill.id}`} className="text-blue-600 hover:text-blue-900">
-																Chi tiết
-															</Link>
-														)}
-														{hasPermission('bills.delete') && (
-															<button type="button" onClick={() => handleDeleteClick(bill.id)} className="text-red-600 hover:text-red-900">
-																Xóa
-															</button>
+													</td>
+												</tr>
+											);
+										})}
+									</tbody>
+								</table>
+							</div>
+
+							{/* Mobile Card View */}
+							<div className="md:hidden divide-y divide-gray-200">
+								{displayedBills.map((bill) => {
+									const isWarning = isOverdueWarning(bill);
+									const allPaid = bill.bill_players?.every((p) => p.is_paid) && bill.bill_players?.length > 0;
+									return (
+										<div
+											key={bill.id}
+											className={`p-4 ${
+												isWarning
+													? "bg-red-100"
+													: allPaid
+													? "bg-green-50"
+													: bill.parent_bill_id
+													? "bg-blue-50"
+													: "bg-white"
+											}`}>
+											<div className="flex items-start justify-between mb-3">
+												<div className="flex-1">
+													<div className="flex items-center gap-2 mb-2">
+														{bill.parent_bill_id ? (
+															<>
+																<span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Bill con</span>
+																{bill.parent_bill && (
+																	<Link
+																		to={`/bills/${bill.parent_bill.id}`}
+																		className="text-xs text-blue-600 hover:text-blue-900 hover:underline"
+																		title="Xem bill chính">
+																		{formatDate(bill.parent_bill.date)}
+																	</Link>
+																)}
+															</>
+														) : (
+															<span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Bill chính</span>
 														)}
 													</div>
-												</td>
-											</tr>
-										);
-									})}
-								</tbody>
-							</table>
+													<div className="text-sm font-medium text-gray-900 mb-1">{formatDate(bill.date)}</div>
+													<div className="text-lg font-semibold text-gray-900">{formatCurrencyRounded(bill.total_amount)}</div>
+												</div>
+												<div className="flex flex-col items-end gap-2">
+													<span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(bill)}`}>{getStatusText(bill)}</span>
+													<div className="text-xs text-gray-600">
+														Chưa TT: {bill.bill_players?.filter((p) => !p.is_paid).length || 0}
+													</div>
+												</div>
+											</div>
+											<div className="flex gap-3 pt-2 border-t border-gray-200">
+												{hasPermission('bills.view') && (
+													<Link
+														to={`/bills/${bill.id}`}
+														className="flex-1 text-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+														Chi tiết
+													</Link>
+												)}
+												{hasPermission('bills.delete') && (
+													<button
+														type="button"
+														onClick={() => handleDeleteClick(bill.id)}
+														className="flex-1 px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">
+														Xóa
+													</button>
+												)}
+											</div>
+										</div>
+									);
+								})}
+							</div>
 
 							{/* Legend/Chú thích */}
-							<div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-								<div className="flex flex-wrap items-center justify-between gap-4 text-sm">
-									<div className="flex flex-wrap items-center gap-4">
+							<div className="bg-gray-50 px-4 sm:px-6 py-4 border-t border-gray-200">
+								<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 text-sm">
+									<div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-4">
 										<div className="flex items-center space-x-2">
-											<div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-											<span className="text-gray-700">Bill quá hạn 1 tuần và còn người chưa thanh toán</span>
+											<div className="w-4 h-4 bg-red-100 border border-red-300 rounded flex-shrink-0"></div>
+											<span className="text-gray-700 text-xs sm:text-sm">Bill quá hạn 1 tuần và còn người chưa thanh toán</span>
 										</div>
 										<div className="flex items-center space-x-2">
-											<div className="w-4 h-4 bg-green-50 border border-green-200 rounded"></div>
-											<span className="text-gray-700">Bill đã thanh toán</span>
+											<div className="w-4 h-4 bg-green-50 border border-green-200 rounded flex-shrink-0"></div>
+											<span className="text-gray-700 text-xs sm:text-sm">Bill đã thanh toán</span>
 										</div>
 										<div className="flex items-center space-x-2">
-											<div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
-											<span className="text-gray-700">Bill con</span>
+											<div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded flex-shrink-0"></div>
+											<span className="text-gray-700 text-xs sm:text-sm">Bill con</span>
 										</div>
 									</div>
-									<div className="text-sm font-semibold text-gray-700">
+									<div className="text-xs sm:text-sm font-semibold text-gray-700">
 										Tổng số bill: {totalMainBillsCount}
 									</div>
 								</div>
@@ -536,16 +708,16 @@ export default function Dashboard() {
 
 							{/* Pagination */}
 							{totalPages > 1 && (
-								<div className="bg-white px-6 py-4 border-t border-gray-200">
-									<div className="flex items-center justify-between">
-										<div className="text-sm text-gray-700">
+								<div className="bg-white px-4 sm:px-6 py-4 border-t border-gray-200">
+									<div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+										<div className="text-xs sm:text-sm text-gray-700">
 											Trang {currentPage} / {totalPages}
 										</div>
-										<div className="flex items-center space-x-2">
+										<div className="flex items-center space-x-1 sm:space-x-2">
 											<button
 												onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
 												disabled={currentPage === 1}
-												className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+												className="px-2 sm:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
 												Trước
 											</button>
 											{/* Page numbers */}
@@ -561,7 +733,7 @@ export default function Dashboard() {
 															<button
 																key={page}
 																onClick={() => setCurrentPage(page)}
-																className={`px-3 py-1 text-sm border rounded-md ${
+																className={`px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-md ${
 																	currentPage === page
 																		? "bg-blue-600 text-white border-blue-600"
 																		: "border-gray-300 hover:bg-gray-50"
@@ -571,7 +743,7 @@ export default function Dashboard() {
 														);
 													} else if (page === currentPage - 2 || page === currentPage + 2) {
 														return (
-															<span key={page} className="px-2 text-gray-500">
+															<span key={page} className="px-1 sm:px-2 text-gray-500 text-xs sm:text-sm">
 																...
 															</span>
 														);
@@ -582,7 +754,7 @@ export default function Dashboard() {
 											<button
 												onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
 												disabled={currentPage === totalPages}
-												className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+												className="px-2 sm:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
 												Sau
 											</button>
 										</div>
@@ -596,25 +768,25 @@ export default function Dashboard() {
 				{/* Unpaid Players List - Right Side (1/4 width) */}
 				<div className="lg:col-span-1">
 					<div className="bg-white shadow rounded-lg overflow-hidden">
-						<div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-							<h3 className="text-lg font-semibold text-gray-900">Người chơi chưa thanh toán</h3>
+						<div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200">
+							<h3 className="text-base sm:text-lg font-semibold text-gray-900">Người chơi chưa thanh toán</h3>
 						</div>
 						<div className="divide-y divide-gray-200 max-h-[calc(100vh-300px)] overflow-y-auto">
 							{loading ? (
-								<div className="px-6 py-8 text-center text-gray-500">Đang tải...</div>
+								<div className="px-4 sm:px-6 py-8 text-center text-gray-500 text-sm">Đang tải...</div>
 							) : unpaidPlayers.length === 0 ? (
-								<div className="px-6 py-8 text-center text-gray-500">Không có người chơi nào chưa thanh toán</div>
+								<div className="px-4 sm:px-6 py-8 text-center text-gray-500 text-sm">Không có người chơi nào chưa thanh toán</div>
 							) : (
 								unpaidPlayers.map((player) => {
 									const isMarking = markingPayment.has(player.userId);
 									return (
-										<div key={player.userId} className="px-6 py-3 hover:bg-gray-50 relative">
-											<div className="pr-8 mb-2">
-												<div className="text-sm font-semibold text-gray-900">
+										<div key={player.userId} className="px-4 sm:px-6 py-3 hover:bg-gray-50 relative">
+											<div className="pr-14 sm:pr-8 mb-2">
+												<div className="text-xs sm:text-sm font-semibold text-gray-900">
 													{player.name}: <span className="text-red-600">{formatCurrencyRounded(player.totalAmount)}</span>
 												</div>
 											</div>
-											<div className="text-sm pr-8">
+											<div className="text-xs sm:text-sm pr-14 sm:pr-8">
 												<div className="text-gray-700 font-medium mb-1">DS ngày thiếu:</div>
 												<div className="space-y-1 pl-2">
 													{player.unpaidDates.map((dateItem, idx) => (
@@ -625,20 +797,20 @@ export default function Dashboard() {
 												</div>
 											</div>
 											{hasPermission('bills.mark_payment') && (
-												<div className="absolute top-3 right-4">
+												<div className="absolute top-3 right-4 sm:right-4">
 													<input
 														type="checkbox"
 														checked={false}
 														onChange={() => handleMarkPlayerPayment(player.userId)}
 														disabled={isMarking}
-														className="w-5 h-5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+														className="w-6 h-6 sm:w-5 sm:h-5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 														title="Đánh dấu thanh toán tất cả bills"
 													/>
 												</div>
 											)}
 											{isMarking && (
 												<div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-													<div className="text-sm text-gray-600">Đang xử lý...</div>
+													<div className="text-xs sm:text-sm text-gray-600">Đang xử lý...</div>
 												</div>
 											)}
 										</div>
