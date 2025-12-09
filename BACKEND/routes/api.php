@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\PaymentAccountController;
+use App\Http\Controllers\Api\PartyBillController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RatioController;
 use App\Http\Controllers\Api\RoleController;
@@ -47,6 +48,9 @@ Route::middleware('auth')->group(function () {
 	// POST route for updating with file upload (must be before apiResource to avoid route conflict)
 	Route::post('payment-accounts/{id}/update', [PaymentAccountController::class, 'update']);
 	Route::apiResource('payment-accounts', PaymentAccountController::class);
+
+	// Party Bills (Chia tiền tiệc)
+	Route::apiResource('party-bills', PartyBillController::class)->only(['index', 'store', 'show', 'destroy']);
 
 	// Roles (Quyền)
 	Route::apiResource('roles', RoleController::class);

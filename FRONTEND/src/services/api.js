@@ -77,6 +77,14 @@ export const paymentAccountsApi = {
   delete: (id) => api.delete(`/payment-accounts/${id}`),
 };
 
+// Party Bills (tiệc)
+export const partyBillsApi = {
+  getAll: () => api.get('/party-bills'),
+  getById: (id) => api.get(`/party-bills/${id}`),
+  create: (data) => api.post('/party-bills', data),
+  delete: (id) => api.delete(`/party-bills/${id}`),
+};
+
 // Roles
 export const rolesApi = {
   getAll: () => api.get('/roles'),

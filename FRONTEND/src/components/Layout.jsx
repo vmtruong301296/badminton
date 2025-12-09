@@ -22,6 +22,7 @@ export default function Layout({ children }) {
 	const allNavItems = [
 		{ path: '/', label: 'Dashboard', icon: '📊', permission: 'bills.view' },
 		{ path: '/bills/create', label: 'Tạo Bill', icon: '➕', permission: 'bills.create' },
+		{ path: '/party-bills', label: 'Chia tiệc', icon: '🍽️', permission: 'bills.view' },
 		{ path: '/players', label: 'Người chơi', icon: '👥', permission: 'users.view' },
 		{ path: '/ratios', label: 'Mức tính', icon: '⚖️', permission: 'ratios.view' },
 		{ path: '/menus', label: 'Menu nước', icon: '🥤', permission: 'menus.view' },

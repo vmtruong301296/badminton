@@ -12,6 +12,7 @@ import CreateBill from './screens/bills/CreateBill';
 import BillDetail from './screens/bills/BillDetail';
 import PaymentAccountsManagement from './screens/payment-accounts/PaymentAccountsManagement';
 import RolesManagement from './screens/roles/RolesManagement';
+import PartyBills from './screens/party/PartyBills';
 
 function LoginRoute() {
 	const { user, loading } = useAuth();
@@ -91,6 +92,16 @@ function AppRoutes() {
 					<ProtectedRoute requiredPermission="bills.create">
 						<Layout>
 							<CreateBill />
+						</Layout>
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/party-bills"
+				element={
+					<ProtectedRoute requiredPermission="bills.view">
+						<Layout>
+							<PartyBills />
 						</Layout>
 					</ProtectedRoute>
 				}
