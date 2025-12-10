@@ -83,6 +83,7 @@ export const partyBillsApi = {
   getById: (id) => api.get(`/party-bills/${id}`),
   create: (data) => api.post('/party-bills', data),
   delete: (id) => api.delete(`/party-bills/${id}`),
+  markPayment: (billId, participantId, data) => api.post(`/party-bills/${billId}/participants/${participantId}/pay`, data),
 };
 
 // Roles

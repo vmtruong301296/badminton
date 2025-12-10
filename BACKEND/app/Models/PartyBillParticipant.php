@@ -14,12 +14,18 @@ class PartyBillParticipant extends Model
         'ratio_value',
         'share_amount',
         'total_amount',
+        'paid_amount',
+        'note',
+        'is_paid',
+        'paid_at',
     ];
 
     protected function casts(): array
     {
         return [
             'ratio_value' => 'decimal:3',
+            'is_paid' => 'boolean',
+            'paid_at' => 'datetime',
         ];
     }
 
