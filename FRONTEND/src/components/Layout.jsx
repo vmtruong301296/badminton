@@ -8,7 +8,17 @@ export default function Layout({ children }) {
 	const { user, logout, hasPermission } = useAuth();
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-	const isActive = (path) => location.pathname === path;
+	const isActive = (path) => {
+		if (path === '/master') {
+			// Active if current path starts with /master or is one of the old master paths
+			return location.pathname === '/master' || 
+			       location.pathname === '/ratios' || 
+			       location.pathname === '/menus' || 
+			       location.pathname === '/shuttles' || 
+			       location.pathname === '/payment-accounts';
+		}
+		return location.pathname === path;
+	};
 
 	const handleLogout = async () => {
 		await logout();
@@ -25,15 +35,24 @@ export default function Layout({ children }) {
 		{ path: '/party-bills', label: 'Bill tiệc', icon: '🍽️', permission: 'party_bills.view' },
 		{ path: '/players', label: 'Người chơi', icon: '👥', permission: 'users.view' },
 		{ path: '/tournament-brackets', label: 'Xếp bảng', icon: '🏆', permission: 'tournament_brackets.view' },
-		{ path: '/ratios', label: 'Mức tính', icon: '⚖️', permission: 'ratios.view' },
-		{ path: '/menus', label: 'Menu nước', icon: '🥤', permission: 'menus.view' },
-		{ path: '/shuttles', label: 'Loại cầu', icon: '🏸', permission: 'shuttles.view' },
-		{ path: '/payment-accounts', label: 'TK nhận tiền', icon: '💳', permission: 'payment_accounts.view' },
+		{ 
+			path: '/master', 
+			label: 'Master', 
+			icon: '⚙️', 
+			permission: null, // Will check if user has any of the master permissions
+			hasAnyPermission: ['ratios.view', 'menus.view', 'shuttles.view', 'payment_accounts.view']
+		},
 		{ path: '/roles', label: 'Quyền', icon: '🔐', permission: 'roles.view' },
 	];
 
 	// Filter nav items based on permissions
-	const navItems = allNavItems.filter((item) => !item.permission || hasPermission(item.permission));
+	const navItems = allNavItems.filter((item) => {
+		if (item.hasAnyPermission) {
+			// Show if user has any of the required permissions
+			return item.hasAnyPermission.some(perm => hasPermission(perm));
+		}
+		return !item.permission || hasPermission(item.permission);
+	});
 
 	return (
 		<div className="min-h-screen bg-gray-50">

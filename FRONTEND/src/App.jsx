@@ -5,12 +5,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './screens/auth/Login';
 import Dashboard from './screens/dashboard/Dashboard';
 import PlayersManagement from './screens/players/PlayersManagement';
-import RatiosManagement from './screens/ratios/RatiosManagement';
-import MenusManagement from './screens/menus/MenusManagement';
-import ShuttlesManagement from './screens/shuttles/ShuttlesManagement';
+import MasterManagement from './screens/master/MasterManagement';
 import CreateBill from './screens/bills/CreateBill';
 import BillDetail from './screens/bills/BillDetail';
-import PaymentAccountsManagement from './screens/payment-accounts/PaymentAccountsManagement';
 import RolesManagement from './screens/roles/RolesManagement';
 import PartyBills from './screens/party/PartyBills';
 import TournamentBrackets from './screens/tournament/TournamentBrackets';
@@ -52,6 +49,22 @@ function LoginRoute() {
 	return <Login />;
 }
 
+// Component to check if user has any master permission
+function MasterRouteGuard({ children }) {
+	const { hasPermission } = useAuth();
+	const hasAnyMasterPermission = 
+		hasPermission('ratios.view') || 
+		hasPermission('menus.view') || 
+		hasPermission('shuttles.view') || 
+		hasPermission('payment_accounts.view');
+	
+	if (!hasAnyMasterPermission) {
+		return <Navigate to="/" replace />;
+	}
+	
+	return children;
+}
+
 function AppRoutes() {
 	return (
 		<Routes>
@@ -76,35 +89,35 @@ function AppRoutes() {
 					</ProtectedRoute>
 				}
 			/>
+			{/* Master Management Route */}
 			<Route
-				path="/ratios"
+				path="/master"
 				element={
-					<ProtectedRoute requiredPermission="ratios.view">
-						<Layout>
-							<RatiosManagement />
-						</Layout>
+					<ProtectedRoute>
+						<MasterRouteGuard>
+							<Layout>
+								<MasterManagement />
+							</Layout>
+						</MasterRouteGuard>
 					</ProtectedRoute>
 				}
+			/>
+			{/* Redirect old routes to master with appropriate tab */}
+			<Route
+				path="/ratios"
+				element={<Navigate to="/master?tab=ratios" replace />}
 			/>
 			<Route
 				path="/menus"
-				element={
-					<ProtectedRoute requiredPermission="menus.view">
-						<Layout>
-							<MenusManagement />
-						</Layout>
-					</ProtectedRoute>
-				}
+				element={<Navigate to="/master?tab=menus" replace />}
 			/>
 			<Route
 				path="/shuttles"
-				element={
-					<ProtectedRoute requiredPermission="shuttles.view">
-						<Layout>
-							<ShuttlesManagement />
-						</Layout>
-					</ProtectedRoute>
-				}
+				element={<Navigate to="/master?tab=shuttles" replace />}
+			/>
+			<Route
+				path="/payment-accounts"
+				element={<Navigate to="/master?tab=payment-accounts" replace />}
 			/>
 			<Route
 				path="/bills/create"
@@ -132,16 +145,6 @@ function AppRoutes() {
 					<ProtectedRoute requiredPermission="bills.view">
 						<Layout>
 							<BillDetail />
-						</Layout>
-					</ProtectedRoute>
-				}
-			/>
-			<Route
-				path="/payment-accounts"
-				element={
-					<ProtectedRoute requiredPermission="payment_accounts.view">
-						<Layout>
-							<PaymentAccountsManagement />
 						</Layout>
 					</ProtectedRoute>
 				}
