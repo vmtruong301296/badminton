@@ -58,6 +58,17 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'payment_accounts.create', 'display_name' => 'Tạo tài khoản thanh toán', 'group' => 'payment_accounts'],
             ['name' => 'payment_accounts.update', 'display_name' => 'Sửa tài khoản thanh toán', 'group' => 'payment_accounts'],
             ['name' => 'payment_accounts.delete', 'display_name' => 'Xóa tài khoản thanh toán', 'group' => 'payment_accounts'],
+
+            // Party Bills
+            ['name' => 'party_bills.view', 'display_name' => 'Xem bill tiệc', 'group' => 'party_bills'],
+            ['name' => 'party_bills.create', 'display_name' => 'Tạo bill tiệc', 'group' => 'party_bills'],
+            ['name' => 'party_bills.delete', 'display_name' => 'Xóa bill tiệc', 'group' => 'party_bills'],
+
+            // Tournament Brackets
+            ['name' => 'tournament_brackets.view', 'display_name' => 'Xem xếp bảng', 'group' => 'tournament_brackets'],
+            ['name' => 'tournament_brackets.create_list', 'display_name' => 'Tạo danh sách VĐV (xếp bảng)', 'group' => 'tournament_brackets'],
+            ['name' => 'tournament_brackets.organize', 'display_name' => 'Xếp bảng thi đấu', 'group' => 'tournament_brackets'],
+            ['name' => 'tournament_brackets.delete', 'display_name' => 'Xóa bảng thi đấu', 'group' => 'tournament_brackets'],
         ];
 
         foreach ($permissions as $permission) {
@@ -84,6 +95,23 @@ class RolePermissionSeeder extends Seeder
             ]
         );
 
+        // New roles for viewing / scheduling tournament brackets
+        $tournamentViewerRole = Role::firstOrCreate(
+            ['name' => 'tournament_viewer'],
+            [
+                'display_name' => 'Xem bảng thi đấu',
+                'description' => 'Chỉ được xem bảng thi đấu',
+            ]
+        );
+
+        $tournamentSchedulerRole = Role::firstOrCreate(
+            ['name' => 'tournament_scheduler'],
+            [
+                'display_name' => 'Xếp bảng thi đấu',
+                'description' => 'Được tạo/xếp/xóa bảng thi đấu',
+            ]
+        );
+
         // Assign all permissions to admin
         $adminRole->permissions()->sync(Permission::pluck('id'));
 
@@ -97,7 +125,26 @@ class RolePermissionSeeder extends Seeder
             'menus.view',
             'shuttles.view',
             'ratios.view',
+            'party_bills.view',
+            'tournament_brackets.view',
+            'tournament_brackets.create_list',
+            'tournament_brackets.organize',
         ])->pluck('id');
         $schedulerRole->permissions()->sync($schedulerPermissions);
+
+        // Assign tournament view-only permissions
+        $tournamentViewerPermissions = Permission::whereIn('name', [
+            'tournament_brackets.view',
+        ])->pluck('id');
+        $tournamentViewerRole->permissions()->sync($tournamentViewerPermissions);
+
+        // Assign tournament schedule permissions (view/create/delete)
+        $tournamentSchedulerPermissions = Permission::whereIn('name', [
+            'tournament_brackets.view',
+            'tournament_brackets.create_list',
+            'tournament_brackets.organize',
+            'tournament_brackets.delete',
+        ])->pluck('id');
+        $tournamentSchedulerRole->permissions()->sync($tournamentSchedulerPermissions);
     }
 }

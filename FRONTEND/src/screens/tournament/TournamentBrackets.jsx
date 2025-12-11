@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { playerListsApi, tournamentPlayersApi, bracketsApi } from '../../services/api';
 
 export default function TournamentBrackets() {
@@ -17,6 +18,11 @@ export default function TournamentBrackets() {
     gender: 'male',
     level: '',
   });
+  const bracketsContainerRef = useRef(null);
+  const { hasPermission } = useAuth();
+  const canCreateList = hasPermission('tournament_brackets.create_list');
+  const canOrganize = hasPermission('tournament_brackets.organize');
+  const canDeleteBrackets = hasPermission('tournament_brackets.delete');
 
   const [organizeFormData, setOrganizeFormData] = useState({
     number_of_brackets: 4,
@@ -231,6 +237,25 @@ export default function TournamentBrackets() {
     }
   };
 
+  const handleExportBrackets = async () => {
+    if (!bracketsContainerRef.current) return;
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(bracketsContainerRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+      const link = document.createElement('a');
+      link.download = 'bang-thi-dau.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error('Export image error', error);
+      alert('Xuất ảnh bảng thi đấu thất bại. Vui lòng thử lại.');
+    }
+  };
+
   const selectedList = playerLists.find(list => list.id === selectedListId);
   const availablePlayers = players.filter(p => !p.brackets || p.brackets.length === 0);
   const assignedPlayers = players.filter(p => p.brackets && p.brackets.length > 0);
@@ -244,18 +269,20 @@ export default function TournamentBrackets() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto pb-8 px-3 sm:px-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý & Xếp bảng thi đấu</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-white shadow-sm border border-gray-100 rounded-2xl p-4 sm:p-5">
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Quản lý & Xếp bảng thi đấu</h1>
+        </div>
+        <div className="flex gap-2 flex-col sm:flex-row sm:items-center">
           <select
             value={selectedListId || ''}
             onChange={(e) => {
               const value = e.target.value;
               setSelectedListId(value ? Number(value) : null);
             }}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
           >
             {playerLists.length === 0 ? (
               <option value="">Chưa có danh sách</option>
@@ -267,34 +294,36 @@ export default function TournamentBrackets() {
               ))
             )}
           </select>
-          <button
-            onClick={handleCreateList}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            + Tạo danh sách mới
-          </button>
+          {canCreateList && (
+            <button
+              onClick={handleCreateList}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 text-sm font-medium w-full sm:w-auto text-center"
+            >
+              + Tạo danh sách VĐV
+            </button>
+          )}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-100 bg-white shadow-sm rounded-2xl px-4">
+        <nav className="-mb-px flex space-x-6">
           <button
             onClick={() => setActiveTab('players')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-semibold text-sm transition-colors ${
               activeTab === 'players'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
             }`}
           >
             Danh sách VĐV ({players.length})
           </button>
           <button
             onClick={() => setActiveTab('brackets')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-semibold text-sm transition-colors ${
               activeTab === 'brackets'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
             }`}
           >
             Bảng thi đấu ({brackets.length})
@@ -306,52 +335,62 @@ export default function TournamentBrackets() {
       {activeTab === 'players' && (
         <div className="space-y-4">
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowAddPlayerForm(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm hover:bg-green-700 text-sm font-semibold w-full sm:w-auto text-center"
             >
               + Thêm VĐV thủ công
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg shadow-sm hover:bg-purple-700 text-sm font-semibold w-full sm:w-auto text-center"
             >
               📥 Import Excel/CSV
             </button>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Tổng VĐV</div>
-              <div className="text-2xl font-bold">{players.length}</div>
+          {/* Stats - wrap on small screens, hide descriptions on mobile */}
+          <div className="flex flex-wrap gap-3">
+            <div className="min-w-[120px] bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 flex-1">
+              <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-gray-500">Tổng VĐV</div>
+              <div className="text-xl sm:text-3xl font-bold text-gray-900 mt-1">{players.length}</div>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Tất cả VĐV trong danh sách</p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Chưa xếp bảng</div>
-              <div className="text-2xl font-bold text-yellow-600">{availablePlayers.length}</div>
+            <div className="min-w-[120px] bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 flex-1">
+              <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-gray-500">Chưa xếp bảng</div>
+              <div className="text-xl sm:text-3xl font-bold text-amber-600 mt-1">{availablePlayers.length}</div>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Sẵn sàng để xếp</p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Đã xếp bảng</div>
-              <div className="text-2xl font-bold text-green-600">{assignedPlayers.length}</div>
+            <div className="min-w-[120px] bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 flex-1">
+              <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-gray-500">Đã xếp bảng</div>
+              <div className="text-xl sm:text-3xl font-bold text-emerald-600 mt-1">{assignedPlayers.length}</div>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Đang nằm trong bảng thi đấu</p>
             </div>
           </div>
 
           {/* Players Table */}
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
+          <div className="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Họ Tên</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giới tính</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">STT</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Họ Tên</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Giới tính</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Level</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Trạng thái</th>
+                  <th className="px-6 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {players.map((player) => (
-                  <tr key={player.id}>
+              <tbody className="bg-white divide-y divide-gray-50">
+                {players.map((player, idx) => (
+                  <tr
+                    key={player.id}
+                    className={`${player.gender === 'male' ? 'bg-blue-50/40' : 'bg-rose-50/40'}`}
+                  >
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
+                      {idx + 1}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {player.name}
                     </td>
@@ -363,11 +402,11 @@ export default function TournamentBrackets() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {player.brackets && player.brackets.length > 0 ? (
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-50 text-green-700 border border-green-100">
                           Đã xếp bảng
                         </span>
                       ) : (
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-100">
                           Chưa xếp
                         </span>
                       )}
@@ -375,7 +414,10 @@ export default function TournamentBrackets() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleDeletePlayer(player.id)}
-                        className="text-red-600 hover:text-red-900"
+                        disabled={player.brackets && player.brackets.length > 0}
+                        className={`font-semibold ${player.brackets && player.brackets.length > 0
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-red-600 hover:text-red-700'}`}
                       >
                         Xóa
                       </button>
@@ -399,28 +441,48 @@ export default function TournamentBrackets() {
       {activeTab === 'brackets' && (
         <div className="space-y-4">
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowOrganizeModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              disabled={availablePlayers.length === 0}
+              className={`px-4 py-2 rounded-lg shadow-sm text-sm font-semibold ${
+                canOrganize && availablePlayers.length > 0
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+              disabled={!canOrganize || availablePlayers.length === 0}
             >
               🎯 Xếp bảng
             </button>
             {brackets.length > 0 && (
               <button
                 onClick={handleDeleteBrackets}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                className={`px-4 py-2 rounded-lg shadow-sm text-sm font-semibold ${
+                  canDeleteBrackets
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+                disabled={!canDeleteBrackets}
               >
-                Xóa tất cả bảng
+                Xóa tất cả
+              </button>
+            )}
+            {brackets.length > 0 && (
+              <button
+                onClick={handleExportBrackets}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 text-sm font-semibold"
+              >
+                📸 Xuất bảng
               </button>
             )}
           </div>
 
           {/* Brackets Grid */}
           {brackets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {brackets.map((bracket) => {
+            <div ref={bracketsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {([...brackets].sort((a, b) => {
+                const order = { male_only: 0, female_only: 1, mixed: 2 };
+                return (order[a.gender_distribution] ?? 3) - (order[b.gender_distribution] ?? 3);
+              })).map((bracket) => {
                 const playersByGender = bracket.players.reduce((acc, p) => {
                   if (!acc[p.gender]) acc[p.gender] = [];
                   acc[p.gender].push(p);
@@ -428,23 +490,31 @@ export default function TournamentBrackets() {
                 }, {});
 
                 return (
-                  <div key={bracket.id} className="bg-white shadow rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-bold">{bracket.name}</h3>
-                      <span className="text-sm text-gray-500">
+                  <div key={bracket.id} className="bg-white shadow-sm border border-gray-100 rounded-2xl p-4 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{bracket.name}</h3>
+                        {/* <p className="text-xs text-gray-500">Seed: {bracket.random_seed?.slice(-6) || 'N/A'}</p> */}
+                      </div>
+                      <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
                         {bracket.players.length} VĐV
                       </span>
                     </div>
                     <div className="space-y-3">
                       {playersByGender.male && playersByGender.male.length > 0 && (
                         <div>
-                          <div className="text-sm font-medium text-gray-700 mb-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-sm font-semibold text-gray-800">
                             Nam ({playersByGender.male.length})
+                          </div>
+                            <span className="text-xs text-gray-400">Level</span>
                           </div>
                           <div className="space-y-1">
                             {playersByGender.male.map((player) => (
-                              <div key={player.id} className="text-sm text-gray-600">
-                                • {player.name} {player.level && `(${player.level})`}
+                              <div key={player.id} className="flex items-center text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                                <span className="mr-2 text-gray-400">•</span>
+                                <span className="font-medium">{player.name}</span>
+                                <span className="ml-auto text-xs text-gray-500">{player.level ? `Level ${player.level}` : 'No level'}</span>
                               </div>
                             ))}
                           </div>
@@ -452,13 +522,18 @@ export default function TournamentBrackets() {
                       )}
                       {playersByGender.female && playersByGender.female.length > 0 && (
                         <div>
-                          <div className="text-sm font-medium text-gray-700 mb-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-sm font-semibold text-gray-800">
                             Nữ ({playersByGender.female.length})
+                          </div>
+                            <span className="text-xs text-gray-400">Level</span>
                           </div>
                           <div className="space-y-1">
                             {playersByGender.female.map((player) => (
-                              <div key={player.id} className="text-sm text-gray-600">
-                                • {player.name} {player.level && `(${player.level})`}
+                              <div key={player.id} className="flex items-center text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                                <span className="mr-2 text-gray-400">•</span>
+                                <span className="font-medium">{player.name}</span>
+                                <span className="ml-auto text-xs text-gray-500">{player.level ? `Level ${player.level}` : 'No level'}</span>
                               </div>
                             ))}
                           </div>
@@ -470,8 +545,9 @@ export default function TournamentBrackets() {
               })}
             </div>
           ) : (
-            <div className="bg-white shadow rounded-lg p-8 text-center">
-              <p className="text-gray-500">Chưa có bảng nào. Hãy bấm "Xếp bảng" để tạo bảng thi đấu.</p>
+            <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-8 text-center text-gray-600">
+              <p className="text-base font-semibold">Chưa có bảng nào</p>
+              <p className="text-sm text-gray-500 mt-1">Hãy bấm "Xếp bảng" để tạo bảng thi đấu.</p>
             </div>
           )}
         </div>
@@ -511,14 +587,17 @@ export default function TournamentBrackets() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Level
+                  Level *
                 </label>
                 <input
-                  type="text"
+                  type="number"
+                  required
+                  min={1}
+                  step={1}
                   value={playerFormData.level}
                   onChange={(e) => setPlayerFormData({ ...playerFormData, level: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ví dụ: A, B, C hoặc 1, 2, 3"
+                  placeholder="Nhập level (1, 2, 3...)"
                 />
               </div>
               <div className="flex gap-2 justify-end">
@@ -554,16 +633,16 @@ export default function TournamentBrackets() {
                   <div>
                     <p className="font-semibold mb-1">Cột 1: Họ Tên (bắt buộc)</p>
                     <p className="font-semibold mb-1">Cột 2: Giới tính (bắt buộc)</p>
-                    <p className="font-semibold mb-1">Cột 3: Level (tùy chọn)</p>
+                    <p className="font-semibold mb-1">Cột 3: Level (bắt buộc, chỉ nhập số 1,2,3,...)</p>
                   </div>
                   <div className="border-t pt-2">
                     <p className="font-semibold mb-1">Ví dụ:</p>
                     <pre className="whitespace-pre-wrap">
 Họ Tên,Giới tính,Level{'\n'}
-Nguyễn Văn A,male,A{'\n'}
-Trần Thị B,female,B{'\n'}
-Lê Văn C,nam,C{'\n'}
-Phạm Thị D,nữ,D
+Nguyễn Văn A,male,1{'\n'}
+Trần Thị B,female,2{'\n'}
+Lê Văn C,nam,1{'\n'}
+Phạm Thị D,nữ,3
                     </pre>
                   </div>
                 </div>

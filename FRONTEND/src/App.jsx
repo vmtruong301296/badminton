@@ -15,6 +15,25 @@ import RolesManagement from './screens/roles/RolesManagement';
 import PartyBills from './screens/party/PartyBills';
 import TournamentBrackets from './screens/tournament/TournamentBrackets';
 
+function HomeRedirect() {
+	const { hasPermission } = useAuth();
+
+	if (hasPermission('bills.view')) {
+		return <Dashboard />;
+	}
+
+	if (hasPermission('tournament_brackets.view')) {
+		return <TournamentBrackets />;
+	}
+
+	if (hasPermission('party_bills.view')) {
+		return <PartyBills />;
+	}
+
+	// Fallback: no relevant permission
+	return <div className="p-6 text-center text-gray-600">Bạn chưa được cấp quyền truy cập bất kỳ chức năng nào.</div>;
+}
+
 function LoginRoute() {
 	const { user, loading } = useAuth();
 	
@@ -42,7 +61,7 @@ function AppRoutes() {
 				element={
 					<ProtectedRoute>
 						<Layout>
-							<Dashboard />
+							<HomeRedirect />
 						</Layout>
 					</ProtectedRoute>
 				}
@@ -100,7 +119,7 @@ function AppRoutes() {
 			<Route
 				path="/party-bills"
 				element={
-					<ProtectedRoute requiredPermission="bills.view">
+					<ProtectedRoute requiredPermission="party_bills.view">
 						<Layout>
 							<PartyBills />
 						</Layout>
@@ -140,7 +159,7 @@ function AppRoutes() {
 			<Route
 				path="/tournament-brackets"
 				element={
-					<ProtectedRoute>
+					<ProtectedRoute requiredPermission="tournament_brackets.view">
 						<Layout>
 							<TournamentBrackets />
 						</Layout>

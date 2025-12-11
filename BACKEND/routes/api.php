@@ -32,18 +32,30 @@ Route::middleware('auth')->group(function () {
 
 	Route::get('/clear/cache/123', function () {
 
-    // Clear cache
-    Artisan::call('cache:clear');
+		// Clear cache
+		Artisan::call('cache:clear');
 
-    // Clear & cache config
-    Artisan::call('config:clear');
+		// Clear & cache config
+		Artisan::call('config:clear');
 
-    // Clear & cache route
-    Artisan::call('route:clear');
-    Artisan::call('route:cache');
+		// Clear & cache route
+		Artisan::call('route:clear');
+		Artisan::call('route:cache');
 
-    return "All caches cleared successfully!";
-});
+		return "All caches cleared successfully!";
+	});
+
+
+	Route::get('/seed/role-permission', function () {
+
+		// Chạy seeder
+		Artisan::call('db:seed', [
+			'--class' => 'RolePermissionSeeder',
+			'--force' => true
+		]);
+
+		return 'RolePermissionSeeder executed successfully!';
+	});
 
 	// Players (Người chơi)
 	Route::apiResource('players', UserController::class);
@@ -98,33 +110,32 @@ Route::middleware('auth')->group(function () {
 
 // Serve images with CORS headers
 Route::get('images/{path}', function ($path) {
-    // Decode URL-encoded path
-    $decodedPath = urldecode($path);
-    
-    // Security: Only allow files from storage/app/public
-    $filePath = storage_path('app/public/' . $decodedPath);
-    $storagePath = storage_path('app/public');
-    
-    // Ensure the file is within the storage directory (prevent directory traversal)
-    $realFilePath = realpath($filePath);
-    $realStoragePath = realpath($storagePath);
-    
-    if (!$realFilePath || !$realStoragePath || strpos($realFilePath, $realStoragePath) !== 0) {
-        abort(404, 'File not found');
-    }
-    
-    if (!file_exists($realFilePath) || !is_file($realFilePath)) {
-        abort(404, 'File not found');
-    }
-    
-    $mimeType = mime_content_type($realFilePath) ?: 'application/octet-stream';
-    
-    return response()->file($realFilePath, [
-        'Content-Type' => $mimeType,
-        'Access-Control-Allow-Origin' => '*',
-        'Access-Control-Allow-Methods' => 'GET, OPTIONS',
-        'Access-Control-Allow-Headers' => 'Content-Type',
-        'Cache-Control' => 'public, max-age=3600',
-    ]);
-})->where('path', '.*');
+	// Decode URL-encoded path
+	$decodedPath = urldecode($path);
 
+	// Security: Only allow files from storage/app/public
+	$filePath = storage_path('app/public/' . $decodedPath);
+	$storagePath = storage_path('app/public');
+
+	// Ensure the file is within the storage directory (prevent directory traversal)
+	$realFilePath = realpath($filePath);
+	$realStoragePath = realpath($storagePath);
+
+	if (!$realFilePath || !$realStoragePath || strpos($realFilePath, $realStoragePath) !== 0) {
+		abort(404, 'File not found');
+	}
+
+	if (!file_exists($realFilePath) || !is_file($realFilePath)) {
+		abort(404, 'File not found');
+	}
+
+	$mimeType = mime_content_type($realFilePath) ?: 'application/octet-stream';
+
+	return response()->file($realFilePath, [
+		'Content-Type' => $mimeType,
+		'Access-Control-Allow-Origin' => '*',
+		'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+		'Access-Control-Allow-Headers' => 'Content-Type',
+		'Cache-Control' => 'public, max-age=3600',
+	]);
+})->where('path', '.*');

@@ -112,17 +112,28 @@ class PlayerController extends Controller
                         $gender = $gender === 'nam' ? 'male' : 'female';
                     }
                     
-                    if (empty($name) || !in_array($gender, ['male', 'female'])) {
-                        $errors[] = "Dòng " . ($rowIndex + 2) . " dữ liệu không hợp lệ: " . implode(', ', $row);
+                    $isValidLevel = is_numeric($level) && (int) $level >= 1;
+
+                    if (empty($name) || !in_array($gender, ['male', 'female']) || !$isValidLevel) {
+                        $errors[] = "Dòng " . ($rowIndex + 2) . " dữ liệu không hợp lệ (Tên/Giới tính/Level): " . implode(', ', $row);
                         continue;
                     }
                     
+                    // Skip if duplicate name (case-insensitive) already exists in this list
+                    $duplicate = Player::where('player_list_id', $playerList->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($name)])
+                        ->exists();
+                    if ($duplicate) {
+                        $errors[] = "Dòng " . ($rowIndex + 2) . " bỏ qua vì trùng tên trong danh sách: " . $name;
+                        continue;
+                    }
+
                     try {
                         Player::create([
                             'player_list_id' => $playerList->id,
                             'name' => $name,
                             'gender' => $gender,
-                            'level' => $level ?: null,
+                            'level' => (int) $level,
                         ]);
                         $imported++;
                     } catch (\Exception $e) {
@@ -155,17 +166,28 @@ class PlayerController extends Controller
                         $gender = $gender === 'nam' ? 'male' : 'female';
                     }
                     
-                    if (empty($name) || !in_array($gender, ['male', 'female'])) {
-                        $errors[] = "Dòng {$rowIndex} dữ liệu không hợp lệ: " . implode(', ', $row);
+                    $isValidLevel = is_numeric($level) && (int) $level >= 1;
+
+                    if (empty($name) || !in_array($gender, ['male', 'female']) || !$isValidLevel) {
+                        $errors[] = "Dòng {$rowIndex} dữ liệu không hợp lệ (Tên/Giới tính/Level): " . implode(', ', $row);
                         continue;
                     }
                     
+                    // Skip if duplicate name (case-insensitive) already exists in this list
+                    $duplicate = Player::where('player_list_id', $playerList->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($name)])
+                        ->exists();
+                    if ($duplicate) {
+                        $errors[] = "Dòng {$rowIndex} bỏ qua vì trùng tên trong danh sách: " . $name;
+                        continue;
+                    }
+
                     try {
                         Player::create([
                             'player_list_id' => $playerList->id,
                             'name' => $name,
                             'gender' => $gender,
-                            'level' => $level ?: null,
+                            'level' => (int) $level,
                         ]);
                         $imported++;
                     } catch (\Exception $e) {
@@ -233,6 +255,14 @@ class PlayerController extends Controller
         $player = Player::whereHas('playerList', function ($q) use ($user) {
             $q->where('user_id', $user->id);
         })->findOrFail($id);
+
+        // Block delete if player is already assigned to any bracket
+        if ($player->brackets()->exists()) {
+            return response()->json([
+                'message' => 'Không thể xóa VĐV vì đã được xếp vào bảng thi đấu'
+            ], 400);
+        }
+
         $player->delete();
 
         return response()->json(['message' => 'Player deleted successfully']);

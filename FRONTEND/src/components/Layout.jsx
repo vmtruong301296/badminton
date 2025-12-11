@@ -20,11 +20,11 @@ export default function Layout({ children }) {
 	};
 
 	const allNavItems = [
-		{ path: '/', label: 'Dashboard', icon: '📊', permission: 'bills.view' },
-		{ path: '/bills/create', label: 'Bill cầu', icon: '➕', permission: 'bills.create' },
-		{ path: '/party-bills', label: 'Bill tiệc', icon: '🍽️', permission: 'bills.view' },
+		{ path: '/', label: 'Bill cầu', icon: '📊', permission: 'bills.view' },
+		{ path: '/bills/create', label: 'Tạo Bill cầu', icon: '➕', permission: 'bills.create' },
+		{ path: '/party-bills', label: 'Bill tiệc', icon: '🍽️', permission: 'party_bills.view' },
 		{ path: '/players', label: 'Người chơi', icon: '👥', permission: 'users.view' },
-		{ path: '/tournament-brackets', label: 'Xếp bảng', icon: '🏆', permission: null },
+		{ path: '/tournament-brackets', label: 'Xếp bảng', icon: '🏆', permission: 'tournament_brackets.view' },
 		{ path: '/ratios', label: 'Mức tính', icon: '⚖️', permission: 'ratios.view' },
 		{ path: '/menus', label: 'Menu nước', icon: '🥤', permission: 'menus.view' },
 		{ path: '/shuttles', label: 'Loại cầu', icon: '🏸', permission: 'shuttles.view' },
