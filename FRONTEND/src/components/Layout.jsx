@@ -24,7 +24,7 @@ export default function Layout({ children }) {
 		{ path: '/bills/create', label: 'Bill cầu', icon: '➕', permission: 'bills.create' },
 		{ path: '/party-bills', label: 'Bill tiệc', icon: '🍽️', permission: 'bills.view' },
 		{ path: '/players', label: 'Người chơi', icon: '👥', permission: 'users.view' },
-		{ path: '/tournament-brackets', label: 'Xếp bảng thi đấu', icon: '🏆', permission: null },
+		{ path: '/tournament-brackets', label: 'Xếp bảng', icon: '🏆', permission: null },
 		{ path: '/ratios', label: 'Mức tính', icon: '⚖️', permission: 'ratios.view' },
 		{ path: '/menus', label: 'Menu nước', icon: '🥤', permission: 'menus.view' },
 		{ path: '/shuttles', label: 'Loại cầu', icon: '🏸', permission: 'shuttles.view' },
