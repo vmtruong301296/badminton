@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { partyBillsApi, playersApi } from "../../services/api";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { partyBillsApi, playersApi, paymentAccountsApi } from "../../services/api";
 import { formatCurrencyRounded, formatDate, formatRatio } from "../../utils/formatters";
 import CurrencyInput from "../../components/common/CurrencyInput";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import PayOldBillsDialog from "../../components/common/PayOldBillsDialog";
+import SelectPaymentAccountDialog from "../../components/common/SelectPaymentAccountDialog";
+import PartyBillExport from "../../components/party/PartyBillExport";
+import html2canvas from "html2canvas";
 
 const today = () => formatDate(new Date().toISOString().slice(0, 10));
 
@@ -10,13 +14,21 @@ export default function PartyBills() {
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [partyBills, setPartyBills] = useState([]);
-	const [filters, setFilters] = useState({ date_from: "", date_to: "", status: "all", limit: 20 });
+	const [filters, setFilters] = useState({ date_from: "", date_to: "", status: ["unpaid", "partial"], limit: 20 });
 	const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null });
 	const [expanded, setExpanded] = useState(null);
 	const [detailBill, setDetailBill] = useState(null);
 	const [detailOpen, setDetailOpen] = useState(false);
 	const [detailLoading, setDetailLoading] = useState(false);
 	const [payingIds, setPayingIds] = useState(new Set());
+	const [uncheckPaymentConfirm, setUncheckPaymentConfirm] = useState({ isOpen: false, participantId: null, participantName: '' });
+	const [payOldBillsConfirm, setPayOldBillsConfirm] = useState({ isOpen: false, participantId: null, participantName: '', debtAmount: 0, oldBillIds: [] });
+	const [paymentAccounts, setPaymentAccounts] = useState([]);
+	const [paymentAccountImages, setPaymentAccountImages] = useState({}); // Store base64 images: { accountId: base64 }
+	const [exporting, setExporting] = useState(false);
+	const [selectAccountDialog, setSelectAccountDialog] = useState({ isOpen: false });
+	const [selectedAccountId, setSelectedAccountId] = useState(null);
+	const exportRef = useRef(null);
 	const [players, setPlayers] = useState([]);
 	const [playerSearch, setPlayerSearch] = useState("");
 	const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -59,11 +71,23 @@ export default function PartyBills() {
 		if (filters.date_to) {
 			data = data.filter((b) => !b.date || b.date <= filters.date_to);
 		}
-		if (filters.status && filters.status !== "all") {
+		if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
 			data = data.filter((b) => {
-				const remaining = b.participants?.reduce((sum, p) => sum + (p.total_amount || 0), 0) || 0;
-				const isDue = remaining > 0;
-				return filters.status === "due" ? isDue : !isDue;
+				const participants = b.participants || [];
+				const total = participants.length;
+				const paid = participants.filter((p) => p.is_paid).length;
+				
+				const statuses = [];
+				if (total > 0 && paid === total) {
+					statuses.push("paid");
+				} else if (paid > 0 && paid < total) {
+					statuses.push("partial");
+				} else if (paid === 0) {
+					statuses.push("unpaid");
+				}
+				
+				// Check if any of the bill's statuses match the selected filters
+				return statuses.some(status => filters.status.includes(status));
 			});
 		}
 		data.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -102,7 +126,87 @@ export default function PartyBills() {
 	useEffect(() => {
 		loadPartyBills();
 		loadPlayers();
+		loadPaymentAccounts();
 	}, []);
+
+	// Helper to convert image URL to base64 using fetch API (bypasses CORS)
+	const loadImageAsBase64 = async (url) => {
+		try {
+			// Convert storage URL to API route if needed
+			let apiUrl = url;
+			if (url.includes('/storage/')) {
+				const pathMatch = url.match(/\/storage\/(.+?)(?:\?|$)/);
+				if (pathMatch && pathMatch[1]) {
+					const cleanPath = pathMatch[1];
+					if (url.startsWith('http')) {
+						apiUrl = `/api/images/${cleanPath}`;
+					} else {
+						apiUrl = `/api/images/${cleanPath}`;
+					}
+				}
+			}
+
+			const response = await fetch(apiUrl, {
+				mode: 'cors',
+				credentials: 'omit',
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const blob = await response.blob();
+
+			return new Promise((resolve, reject) => {
+				const reader = new FileReader();
+				reader.onloadend = () => {
+					resolve(reader.result);
+				};
+				reader.onerror = (error) => {
+					reject(error);
+				};
+				reader.readAsDataURL(blob);
+			});
+		} catch (error) {
+			console.error('loadImageAsBase64 - Error:', error, 'URL:', url);
+			throw error;
+		}
+	};
+
+	const loadPaymentAccounts = async () => {
+		try {
+			const response = await paymentAccountsApi.getAll({ is_active: true });
+			setPaymentAccounts(response.data);
+
+			// Preload and convert images to base64
+			const imageMap = {};
+			const imagePromises = response.data
+				.filter(acc => acc.is_active && acc.qr_code_image)
+				.map(async (acc) => {
+					try {
+						if (acc.qr_code_image.startsWith('data:image/')) {
+							imageMap[acc.id] = acc.qr_code_image;
+							return;
+						}
+
+						const imageUrl = acc.qr_code_image_url ||
+							(acc.qr_code_image ? `${window.location.origin}/storage/${acc.qr_code_image}` : null);
+
+						if (imageUrl) {
+							const base64 = await loadImageAsBase64(imageUrl);
+							imageMap[acc.id] = base64;
+						}
+					} catch (error) {
+						console.error(`Failed to preload image for account ${acc.id}:`, error);
+					}
+				});
+
+			await Promise.all(imagePromises);
+			setPaymentAccountImages(imageMap);
+		} catch (error) {
+			console.error('Error loading payment accounts:', error);
+		}
+	};
 
 	const loadPlayers = async () => {
 		try {
@@ -293,6 +397,7 @@ export default function PartyBills() {
 			const res = await partyBillsApi.getById(id);
 			setDetailBill(res.data);
 			setDetailOpen(true);
+			setSelectedAccountId(null); // Reset selected account when opening detail
 		} catch (error) {
 			console.error("Load party bill detail error", error);
 			alert("Không thể tải chi tiết tiệc");
@@ -303,13 +408,89 @@ export default function PartyBills() {
 
 	const handleMarkPayment = async (participant) => {
 		if (!detailBill) return;
+		
+		const isPaid = !participant.is_paid;
+		
+		// Nếu đang uncheck (từ checked -> unchecked), hiển thị confirm dialog
+		if (!isPaid) {
+			setUncheckPaymentConfirm({
+				isOpen: true,
+				participantId: participant.id,
+				participantName: participant.name || '',
+			});
+			return;
+		}
+		
+		// Nếu đang check (từ unchecked -> checked) và có nợ cũ
+		if (isPaid && participant.debt_amount > 0 && participant.debt_details && participant.debt_details.length > 0) {
+			// Lấy các bill_id từ debt_details (chỉ lấy các bill trước ngày của bill hiện tại)
+			// Backend đã filter các bill có date < currentBillDate, nên tất cả debt_details đều là nợ cũ
+			const currentBillDate = detailBill.date ? (typeof detailBill.date === 'string' ? detailBill.date.slice(0, 10) : detailBill.date) : null;
+			const oldBillIds = participant.debt_details
+				.filter(debt => {
+					// Chỉ lấy các bill có date < currentBillDate (nợ cũ sau ngày của bill hiện tại)
+					if (!debt.date || !currentBillDate) return false;
+					const debtDate = typeof debt.date === 'string' ? debt.date.slice(0, 10) : debt.date;
+					return debtDate < currentBillDate;
+				})
+				.map(debt => debt.bill_id)
+				.filter(id => id); // Loại bỏ null/undefined
+			
+			if (oldBillIds.length > 0) {
+				setPayOldBillsConfirm({
+					isOpen: true,
+					participantId: participant.id,
+					participantName: participant.name || '',
+					debtAmount: participant.debt_amount,
+					oldBillIds: oldBillIds,
+				});
+				return;
+			}
+		}
+		
+		// Nếu không có nợ cũ, gọi API trực tiếp
+		await executeMarkPayment(participant.id, isPaid, []);
+	};
+
+	const executeMarkPayment = async (participantId, isPaid, oldBillIds = []) => {
+		if (!detailBill) return;
+		
 		try {
 			const newSet = new Set(payingIds);
-			newSet.add(participant.id);
+			newSet.add(participantId);
 			setPayingIds(newSet);
-			const res = await partyBillsApi.markPayment(detailBill.id, participant.id, { is_paid: !participant.is_paid });
-			const updated = detailBill.participants.map((p) => (p.id === participant.id ? res.data.participant : p));
+			
+			// Mark payment cho bill hiện tại
+			const res = await partyBillsApi.markPayment(detailBill.id, participantId, { is_paid: isPaid });
+			const updated = detailBill.participants.map((p) => (p.id === participantId ? res.data.participant : p));
 			setDetailBill({ ...detailBill, participants: updated });
+			
+			// Nếu có bill cũ cần thanh toán, mark payment cho từng bill
+			if (oldBillIds.length > 0 && isPaid) {
+				const participant = detailBill.participants.find((p) => p.id === participantId);
+				if (participant && participant.user_id) {
+					// Lấy thông tin bill cũ từ debt_details để lấy bill_id và participant_id
+					const promises = oldBillIds.map(async (oldBillId) => {
+						try {
+							// Lấy bill cũ để lấy participant_id của user trong bill đó
+							const oldBillResponse = await partyBillsApi.getById(oldBillId);
+							const oldBill = oldBillResponse.data;
+							const oldParticipant = oldBill.participants?.find((p) => p.user_id === participant.user_id);
+							if (oldParticipant && !oldParticipant.is_paid) {
+								await partyBillsApi.markPayment(oldBillId, oldParticipant.id, {
+									is_paid: true,
+								});
+							}
+						} catch (error) {
+							console.error(`Error marking payment for old bill ${oldBillId}:`, error);
+						}
+					});
+					await Promise.all(promises);
+				}
+			}
+			
+			// Reload detail bill để lấy đầy đủ thông tin debt_amount và debt_details được tính lại
+			await handleOpenDetail(detailBill.id);
 			// Reload list to reflect status/unpaid count
 			await loadPartyBills();
 		} catch (error) {
@@ -317,8 +498,143 @@ export default function PartyBills() {
 			alert("Không thể cập nhật thanh toán");
 		} finally {
 			const newSet = new Set(payingIds);
-			newSet.delete(participant.id);
+			newSet.delete(participantId);
 			setPayingIds(newSet);
+		}
+	};
+
+	const handlePayOldBillsConfirm = async () => {
+		await executeMarkPayment(
+			payOldBillsConfirm.participantId,
+			true,
+			payOldBillsConfirm.oldBillIds
+		);
+		setPayOldBillsConfirm({ isOpen: false, participantId: null, participantName: '', debtAmount: 0, oldBillIds: [] });
+	};
+
+	const handlePayCurrentOnly = async () => {
+		await executeMarkPayment(payOldBillsConfirm.participantId, true, []);
+		setPayOldBillsConfirm({ isOpen: false, participantId: null, participantName: '', debtAmount: 0, oldBillIds: [] });
+	};
+
+	const handleUncheckPaymentConfirm = async () => {
+		await executeMarkPayment(uncheckPaymentConfirm.participantId, false);
+		setUncheckPaymentConfirm({ isOpen: false, participantId: null, participantName: '' });
+	};
+
+	const handleUncheckPaymentCancel = () => {
+		setUncheckPaymentConfirm({ isOpen: false, participantId: null, participantName: '' });
+		// Reload để đảm bảo checkbox trở về trạng thái ban đầu
+		if (detailBill) {
+			handleOpenDetail(detailBill.id);
+		}
+	};
+
+	const handlePayOldBillsCancel = () => {
+		setPayOldBillsConfirm({ isOpen: false, participantId: null, participantName: '', debtAmount: 0, oldBillIds: [] });
+		// Reload để đảm bảo checkbox trở về trạng thái ban đầu
+		if (detailBill) {
+			handleOpenDetail(detailBill.id);
+		}
+	};
+
+	const handleExportBill = () => {
+		if (!detailBill) return;
+		setSelectAccountDialog({ isOpen: true });
+	};
+
+	const handleSelectAccountConfirm = async (accountId) => {
+		setSelectAccountDialog({ isOpen: false });
+		await executeExportBill(accountId);
+	};
+
+	const handleSelectAccountCancel = () => {
+		setSelectAccountDialog({ isOpen: false });
+		setSelectedAccountId(null); // Reset when dialog closes
+	};
+
+	const executeExportBill = async (accountId) => {
+		if (!detailBill) return;
+
+		setSelectedAccountId(accountId);
+		await new Promise(resolve => setTimeout(resolve, 300));
+
+		if (!exportRef.current) {
+			console.error('Export ref not available');
+			setExporting(false);
+			return;
+		}
+
+		try {
+			setExporting(true);
+
+			// Ensure all payment account images are preloaded before export
+			const accountsNeedingPreload = paymentAccounts
+				.filter(acc => acc.is_active && acc.qr_code_image && !paymentAccountImages[acc.id]);
+
+			if (accountsNeedingPreload.length > 0) {
+				const imageMap = { ...paymentAccountImages };
+
+				await Promise.all(accountsNeedingPreload.map(async (acc) => {
+					try {
+						if (acc.qr_code_image.startsWith('data:image/')) {
+							imageMap[acc.id] = acc.qr_code_image;
+							return;
+						}
+
+						const imageUrl = acc.qr_code_image_url ||
+							(acc.qr_code_image ? `${window.location.origin}/storage/${acc.qr_code_image}` : null);
+
+						if (imageUrl) {
+							const base64 = await loadImageAsBase64(imageUrl);
+							imageMap[acc.id] = base64;
+						}
+					} catch (error) {
+						console.error(`Failed to preload image for account ${acc.id} before export:`, error);
+					}
+				}));
+
+				setPaymentAccountImages(imageMap);
+				await new Promise(resolve => setTimeout(resolve, 300));
+			}
+
+			// Wait for all images to be ready
+			const images = exportRef.current.querySelectorAll('img.bill-export-image');
+			const imageReadyPromises = Array.from(images).map((img) => {
+				return new Promise((resolve) => {
+					if (img.complete && img.naturalHeight > 0) {
+						resolve();
+						return;
+					}
+
+					img.onload = () => resolve();
+					img.onerror = () => resolve();
+					setTimeout(() => resolve(), 5000);
+				});
+			});
+
+			await Promise.all(imageReadyPromises);
+			await new Promise(resolve => setTimeout(resolve, 1000));
+
+			const canvas = await html2canvas(exportRef.current, {
+				backgroundColor: '#ffffff',
+				scale: 2,
+				logging: false,
+				useCORS: true,
+				allowTaint: true,
+			});
+
+			// Convert canvas to image and download
+			const link = document.createElement('a');
+			link.download = `Bill_Tiec_${detailBill.id}_${formatDate(detailBill.date).replace(/\//g, '-')}.png`;
+			link.href = canvas.toDataURL('image/png');
+			link.click();
+
+			setExporting(false);
+		} catch (error) {
+			console.error('Error exporting bill:', error);
+			alert('Có lỗi xảy ra khi xuất bill');
+			setExporting(false);
 		}
 	};
 
@@ -527,14 +843,56 @@ export default function PartyBills() {
 					</div>
 					<div>
 						<label className="block text-sm text-gray-700 mb-1">Trạng thái</label>
-						<select
-							value={filters.status}
-							onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-							className="w-full border rounded px-3 py-2">
-							<option value="all">Tất cả</option>
-							<option value="due">Còn phải thu</option>
-							<option value="done">Đã đủ</option>
-						</select>
+						<div className="border rounded px-3 py-2 bg-white space-y-2">
+							<label className="flex items-center space-x-2 cursor-pointer">
+								<input
+									type="checkbox"
+									checked={Array.isArray(filters.status) && filters.status.includes("paid")}
+									onChange={(e) => {
+										const current = Array.isArray(filters.status) ? filters.status : [];
+										if (e.target.checked) {
+											setFilters({ ...filters, status: [...current, "paid"] });
+										} else {
+											setFilters({ ...filters, status: current.filter(s => s !== "paid") });
+										}
+									}}
+									className="rounded"
+								/>
+								<span className="text-sm">Đã thanh toán</span>
+							</label>
+							<label className="flex items-center space-x-2 cursor-pointer">
+								<input
+									type="checkbox"
+									checked={Array.isArray(filters.status) && filters.status.includes("partial")}
+									onChange={(e) => {
+										const current = Array.isArray(filters.status) ? filters.status : [];
+										if (e.target.checked) {
+											setFilters({ ...filters, status: [...current, "partial"] });
+										} else {
+											setFilters({ ...filters, status: current.filter(s => s !== "partial") });
+										}
+									}}
+									className="rounded"
+								/>
+								<span className="text-sm">Thanh toán 1 phần</span>
+							</label>
+							<label className="flex items-center space-x-2 cursor-pointer">
+								<input
+									type="checkbox"
+									checked={Array.isArray(filters.status) && filters.status.includes("unpaid")}
+									onChange={(e) => {
+										const current = Array.isArray(filters.status) ? filters.status : [];
+										if (e.target.checked) {
+											setFilters({ ...filters, status: [...current, "unpaid"] });
+										} else {
+											setFilters({ ...filters, status: current.filter(s => s !== "unpaid") });
+										}
+									}}
+									className="rounded"
+								/>
+								<span className="text-sm">Chưa thanh toán</span>
+							</label>
+						</div>
 					</div>
 					<div>
 						<label className="block text-sm text-gray-700 mb-1">Số tiệc hiển thị</label>
@@ -631,9 +989,24 @@ export default function PartyBills() {
 								<h3 className="text-lg font-semibold">Chi tiết tiệc</h3>
 								{detailBill?.date && <div className="text-sm text-gray-600">Ngày: {detailBill.date.slice(0, 10)}</div>}
 							</div>
-							<button type="button" onClick={() => setDetailOpen(false)} className="text-gray-500 hover:text-gray-700">
-								✕
-							</button>
+							<div className="flex items-center space-x-3">
+								<button
+									type="button"
+									onClick={handleExportBill}
+									disabled={exporting || !detailBill}
+									className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+									{exporting ? 'Đang xuất...' : '📄 Xuất Bill'}
+								</button>
+								<button 
+									type="button" 
+									onClick={() => {
+										setDetailOpen(false);
+										setSelectedAccountId(null); // Reset selected account when closing detail
+									}} 
+									className="text-gray-500 hover:text-gray-700">
+									✕
+								</button>
+							</div>
 						</div>
 
 						<div className="px-6 py-4 space-y-4">
@@ -641,7 +1014,7 @@ export default function PartyBills() {
 								<div className="text-center text-gray-500 py-6">Đang tải...</div>
 							) : (
 								<>
-									<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+									<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 										<div className="p-3 bg-gray-50 rounded border">
 											<div className="text-gray-600 text-sm">Tên/Nội dung</div>
 											<div className="text-base font-semibold">{detailBill?.name || "-"}</div>
@@ -654,6 +1027,10 @@ export default function PartyBills() {
 										<div className="p-3 bg-gray-50 rounded border">
 											<div className="text-gray-600 text-sm">Tổng chi phí thêm</div>
 											<div className="text-base font-semibold">{formatCurrencyRounded(detailBill?.total_extra || 0)}</div>
+										</div>
+										<div className="p-3 bg-gray-50 rounded border">
+											<div className="text-gray-600 text-sm">Số tiền/người</div>
+											<div className="text-base font-semibold">{formatCurrencyRounded(detailBill?.unit_price || 0)}</div>
 										</div>
 									</div>
 
@@ -683,9 +1060,9 @@ export default function PartyBills() {
                           <tr className="border-b">
                             <th className="text-left py-2 px-2">Tên</th>
                             <th className="text-right py-2 px-2">Mức</th>
-                            <th className="text-right py-2 px-2">Đã chi</th>
+                            <th className="text-right py-2 px-2">Thành tiền</th>
 														<th className="text-right py-2 px-2">Nợ</th>
-														<th className="text-right py-2 px-2">Thành tiền</th>
+														<th className="text-right py-2 px-2">Đã chi</th>
 														<th className="text-right py-2 px-2">Tổng tiền</th>
                             <th className="text-center py-2 px-2">Thanh toán</th>
                             <th className="text-left py-2 px-2">Ghi chú</th>
@@ -696,7 +1073,9 @@ export default function PartyBills() {
 														<tr key={p.id} className="border-b">
 															<td className="py-2 px-2">{p.name}</td>
 															<td className="py-2 px-2 text-right">{formatRatio(p.ratio_value)}</td>
-															<td className="py-2 px-2 text-right">{formatCurrencyRounded(p.paid_amount || 0)}</td>
+															<td className="py-2 px-2 text-right">
+																{formatCurrencyRounded(p.total_amount || 0)}
+															</td>
 															<td className="py-2 px-2 text-right">
 																<div className="font-semibold">
 																	{p.debt_amount && p.debt_amount > 0
@@ -714,9 +1093,7 @@ export default function PartyBills() {
 																	</div>
 																)}
 															</td>
-															<td className="py-2 px-2 text-right">
-																{formatCurrencyRounded(p.total_amount || 0)}
-															</td>
+															<td className="py-2 px-2 text-right">{formatCurrencyRounded(p.paid_amount || 0)}</td>
 															<td className="py-2 px-2 text-right">
 																{formatCurrencyRounded((p.total_amount || 0) + (p.debt_amount || 0))}
 															</td>
@@ -805,6 +1182,43 @@ export default function PartyBills() {
 					</div>
 				</div>
 			)}
+
+			<ConfirmDialog
+				isOpen={uncheckPaymentConfirm.isOpen}
+				onClose={handleUncheckPaymentCancel}
+				onConfirm={handleUncheckPaymentConfirm}
+				title="Xác nhận hủy thanh toán"
+				message={`Bạn có chắc chắn muốn hủy trạng thái "Đã thanh toán" cho ${uncheckPaymentConfirm.participantName}?`}
+			/>
+
+			<PayOldBillsDialog
+				isOpen={payOldBillsConfirm.isOpen}
+				onClose={handlePayOldBillsCancel}
+				onPayCurrentOnly={handlePayCurrentOnly}
+				onPayAll={handlePayOldBillsConfirm}
+				playerName={payOldBillsConfirm.participantName}
+				debtAmount={payOldBillsConfirm.debtAmount}
+			/>
+
+			{/* Hidden export component for image generation */}
+			{selectedAccountId && detailBill && (
+				<div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+					<div ref={exportRef}>
+						<PartyBillExport 
+							bill={detailBill} 
+							paymentAccounts={paymentAccounts.filter(acc => acc.id === selectedAccountId)} 
+							paymentAccountImages={paymentAccountImages} 
+						/>
+					</div>
+				</div>
+			)}
+
+			<SelectPaymentAccountDialog
+				isOpen={selectAccountDialog.isOpen}
+				onClose={handleSelectAccountCancel}
+				onConfirm={handleSelectAccountConfirm}
+				paymentAccounts={paymentAccounts}
+			/>
 		</div>
 	);
 }
