@@ -943,14 +943,20 @@ export default function PartyBills() {
 							</tr>
 						</thead>
 						<tbody>
-							{filteredPartyBills.map((bill) => (
+							{filteredPartyBills.map((bill) => {
+								// Tính tổng số tiền thêm của tất cả participants
+								const totalFoodAmount = (bill.participants || []).reduce((sum, p) => sum + (Number(p.food_amount) || 0), 0);
+								// Tổng tiền = total_amount + tổng số tiền thêm
+								const totalWithFood = (bill.total_amount || 0) + totalFoodAmount;
+								
+								return (
 								<tr key={bill.id} className="border-b hover:bg-gray-50 align-top">
 									<td className="py-2 px-2">{bill.date ? bill.date.slice(0, 10) : ""}</td>
 									<td className="py-2 px-2">
 										<div className="font-semibold">{bill.name || "-"}</div>
 										{bill.note && <div className="text-xs text-gray-500">{bill.note}</div>}
 									</td>
-									<td className="py-2 px-2 text-right">{formatCurrencyRounded(bill.total_amount)}</td>
+									<td className="py-2 px-2 text-right">{formatCurrencyRounded(totalWithFood)}</td>
 									<td className="py-2 px-2 text-center">
 										{(() => {
 											const status = getBillStatus(bill);
@@ -970,7 +976,8 @@ export default function PartyBills() {
 										</button>
 									</td>
 								</tr>
-							))}
+								);
+							})}
 							{filteredPartyBills.length === 0 && (
 								<tr>
 									<td colSpan="5" className="text-center py-4 text-gray-500">
