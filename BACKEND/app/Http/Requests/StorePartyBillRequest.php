@@ -17,7 +17,7 @@ class StorePartyBillRequest extends FormRequest
             'date' => 'required|date',
             'name' => 'required|string|max:255',
             'note' => 'nullable|string',
-            'base_amount' => 'required|integer|min:1',
+            'base_amount' => 'required|integer|min:0',
             'extras' => 'nullable|array',
             'extras.*.name' => 'required_with:extras.*.amount|string|max:255',
             'extras.*.amount' => 'required_with:extras.*.name|integer|min:0',
@@ -26,6 +26,7 @@ class StorePartyBillRequest extends FormRequest
             'participants.*.name' => 'required|string|max:255',
             'participants.*.ratio_value' => 'nullable|numeric|min:0',
             'participants.*.paid_amount' => 'nullable|integer|min:0',
+            'participants.*.food_amount' => 'nullable|integer|min:0',
             'participants.*.note' => 'nullable|string',
             'participants.*.is_paid' => 'nullable|boolean',
         ];

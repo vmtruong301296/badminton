@@ -58,7 +58,8 @@ export default function PartyBills() {
 			const ratio = Number(p.ratio_value) || 0;
 			const share = Math.round(ratio * unitPrice);
 			const paidAmount = Number(p.paid_amount) || 0;
-			const totalAmount = share - paidAmount; // Thành tiền = share - số tiền đã chi
+			const foodAmount = Number(p.food_amount) || 0;
+			const totalAmount = share + foodAmount - paidAmount; // Thành tiền = share + số tiền món ăn - số tiền đã chi
 			return { ...p, share, totalAmount };
 		});
 	}, [form.participants, unitPrice]);
@@ -249,6 +250,7 @@ export default function PartyBills() {
 				ratio_value: 1, // Mặc định luôn là 1 cho chia tiệc
 				default_ratio_value: player.default_ratio_value ?? player.default_ratio ?? 1,
 				paid_amount: 0, // Số tiền đã chi
+				food_amount: 0, // Số tiền món ăn
 				note: "", // Ghi chú
 			},
 		]);
@@ -338,18 +340,13 @@ export default function PartyBills() {
 						name: p.name,
 						ratio_value: Number(p.ratio_value) || 0,
 						paid_amount: Number(p.paid_amount) || 0,
+						food_amount: Number(p.food_amount) || 0,
 						note: p.note || "",
 					})),
 			};
 
 			if (payload.participants.length === 0) {
 				alert("Vui lòng nhập ít nhất 1 người");
-				setSaving(false);
-				return;
-			}
-
-			if (payload.base_amount <= 0) {
-				alert("Tổng tiền tiệc phải lớn hơn 0");
 				setSaving(false);
 				return;
 			}
@@ -746,9 +743,19 @@ export default function PartyBills() {
 							</div>
 
 							<div className="md:col-span-2 space-y-2">
+								{/* Header row - chỉ hiển thị trên desktop */}
+								<div className="hidden md:grid grid-cols-12 gap-2 px-2 py-2 bg-gray-50 border rounded text-xs font-semibold text-gray-700">
+									<div className="col-span-2">Tên</div>
+									<div className="col-span-1 text-right">Mức tính</div>
+									<div className="col-span-2 text-right">Đã chi</div>
+									<div className="col-span-2 text-right">Số tiền thêm</div>
+									<div className="col-span-2">Ghi chú</div>
+									<div className="col-span-2 text-right">Thành tiền</div>
+									<div className="col-span-1 text-center">Xóa</div>
+								</div>
 								{participantWithShare.map((p, idx) => (
 									<div key={idx} className="grid grid-cols-12 gap-2 items-center border rounded p-2 bg-white">
-										<div className="col-span-12 md:col-span-3">
+										<div className="col-span-12 md:col-span-2">
 											<div className="text-sm font-semibold text-gray-800">{p.name}</div>
 										</div>
 										<input
@@ -757,8 +764,8 @@ export default function PartyBills() {
 											min={0}
 											value={p.ratio_value}
 											onChange={(e) => updateParticipant(idx, "ratio_value", e.target.value)}
-											className="col-span-12 md:col-span-2 border rounded px-2 py-1.5 text-sm"
-											placeholder="Mức tính"
+											className="col-span-12 md:col-span-1 border rounded px-2 py-1.5 text-sm"
+											placeholder="Mức"
 										/>
 										<CurrencyInput
 											value={p.paid_amount || 0}
@@ -766,14 +773,20 @@ export default function PartyBills() {
 											className="col-span-12 md:col-span-2 text-sm"
 											placeholder="Đã chi"
 										/>
+										<CurrencyInput
+											value={p.food_amount || 0}
+											onChange={(value) => updateParticipant(idx, "food_amount", value)}
+											className="col-span-12 md:col-span-2 text-sm"
+											placeholder="Số tiền thêm"
+										/>
 										<input
 											type="text"
 											value={p.note || ""}
 											onChange={(e) => updateParticipant(idx, "note", e.target.value)}
-											className="col-span-12 md:col-span-3 border rounded px-2 py-1.5 text-sm"
+											className="col-span-12 md:col-span-2 border rounded px-2 py-1.5 text-sm"
 											placeholder="Ghi chú..."
 										/>
-										<div className="col-span-12 md:col-span-1 text-right font-semibold text-blue-700 text-sm">
+										<div className="col-span-12 md:col-span-2 text-right font-semibold text-blue-700 text-sm">
 											{formatCurrencyRounded(p.totalAmount)}
 										</div>
 										<button
@@ -1059,64 +1072,50 @@ export default function PartyBills() {
 												<thead>
                           <tr className="border-b">
                             <th className="text-left py-2 px-2">Tên</th>
-                            <th className="text-right py-2 px-2">Mức</th>
-                            <th className="text-right py-2 px-2">Thành tiền</th>
-														<th className="text-right py-2 px-2">Nợ</th>
-														<th className="text-right py-2 px-2">Đã chi</th>
-														<th className="text-right py-2 px-2">Tổng tiền</th>
-                            <th className="text-center py-2 px-2">Thanh toán</th>
+                            <th className="text-right py-2 px-2">Mức tính</th>
+                            <th className="text-right py-2 px-2">Đã chi</th>
+                            <th className="text-right py-2 px-2">Số tiền thêm</th>
                             <th className="text-left py-2 px-2">Ghi chú</th>
+                            <th className="text-right py-2 px-2">Thành tiền</th>
+                            <th className="text-center py-2 px-2">Thanh toán</th>
                           </tr>
 												</thead>
 												<tbody>
-													{detailBill?.participants?.map((p) => (
-														<tr key={p.id} className="border-b">
-															<td className="py-2 px-2">{p.name}</td>
-															<td className="py-2 px-2 text-right">{formatRatio(p.ratio_value)}</td>
-															<td className="py-2 px-2 text-right">
-																{formatCurrencyRounded(p.total_amount || 0)}
-															</td>
-															<td className="py-2 px-2 text-right">
-																<div className="font-semibold">
-																	{p.debt_amount && p.debt_amount > 0
-																		? formatCurrencyRounded(p.debt_amount)
-																		: formatCurrencyRounded(0)}
-																</div>
-																{p.debt_details && p.debt_details.length > 0 && (
-																	<div className="text-xs text-gray-600 space-y-1 mt-1">
-																		{p.debt_details.map((d, idx) => (
-																			<div key={idx} className="flex justify-between">
-																				<span>{d.date}</span>
-																				<span>{formatCurrencyRounded(d.amount)}</span>
-																			</div>
-																		))}
-																	</div>
-																)}
-															</td>
-															<td className="py-2 px-2 text-right">{formatCurrencyRounded(p.paid_amount || 0)}</td>
-															<td className="py-2 px-2 text-right">
-																{formatCurrencyRounded((p.total_amount || 0) + (p.debt_amount || 0))}
-															</td>
-                              <td className="py-2 px-2 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={p.is_paid || false}
-                                  disabled={payingIds.has(p.id)}
-                                  onChange={() => handleMarkPayment(p)}
-                                  className="w-5 h-5"
-                                />
-                                {p.paid_at && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {new Date(p.paid_at).toLocaleString('vi-VN')}
-                                  </div>
-                                )}
-                              </td>
-															<td className="py-2 px-2 text-left text-xs text-gray-600">{p.note || ""}</td>
-														</tr>
-													))}
+													{detailBill?.participants?.map((p) => {
+														const shareAmount = p.share_amount || 0;
+														const foodAmount = p.food_amount || 0;
+														const paidAmount = p.paid_amount || 0;
+														const totalAmount = shareAmount + foodAmount - paidAmount;
+														return (
+															<tr key={p.id} className="border-b">
+																<td className="py-2 px-2">{p.name}</td>
+																<td className="py-2 px-2 text-right">{formatRatio(p.ratio_value)}</td>
+																<td className="py-2 px-2 text-right">{formatCurrencyRounded(paidAmount)}</td>
+																<td className="py-2 px-2 text-right">{formatCurrencyRounded(foodAmount)}</td>
+																<td className="py-2 px-2 text-left text-xs text-gray-600">{p.note || ""}</td>
+																<td className="py-2 px-2 text-right font-semibold">
+																	{formatCurrencyRounded(totalAmount)}
+																</td>
+																<td className="py-2 px-2 text-center">
+																	<input
+																		type="checkbox"
+																		checked={p.is_paid || false}
+																		disabled={payingIds.has(p.id)}
+																		onChange={() => handleMarkPayment(p)}
+																		className="w-5 h-5"
+																	/>
+																	{p.paid_at && (
+																		<div className="text-xs text-gray-500 mt-1">
+																			{new Date(p.paid_at).toLocaleString('vi-VN')}
+																		</div>
+																	)}
+																</td>
+															</tr>
+														);
+													})}
 													{(!detailBill?.participants || detailBill.participants.length === 0) && (
 														<tr>
-															<td colSpan="5" className="text-center py-3 text-gray-500">
+															<td colSpan="7" className="text-center py-3 text-gray-500">
 																Chưa có người tham gia
 															</td>
 														</tr>

@@ -55,9 +55,9 @@ export default function PartyBillExport({ bill, paymentAccounts = [], paymentAcc
 								<tr className="bg-gray-100">
 									<th className="border border-gray-300 px-3 py-2 text-left">STT</th>
 									<th className="border border-gray-300 px-3 py-2 text-left">Tên</th>
-									<th className="border border-gray-300 px-3 py-2 text-right">Mức tính</th>
-									<th className="border border-gray-300 px-3 py-2 text-right">Thành tiền</th>
 									<th className="border border-gray-300 px-3 py-2 text-right">Đã chi</th>
+									<th className="border border-gray-300 px-3 py-2 text-right">Chi phí thêm</th>
+									<th className="border border-gray-300 px-3 py-2 text-left">Ghi chú</th>
 									<th className="border border-gray-300 px-3 py-2 text-right">Nợ</th>
 									<th className="border border-gray-300 px-3 py-2 text-right">Tổng tiền</th>
 									<th className="border border-gray-300 px-3 py-2 text-center">Đã TT</th>
@@ -73,41 +73,53 @@ export default function PartyBillExport({ bill, paymentAccounts = [], paymentAcc
 										return aIsPaid === bIsPaid ? 0 : aIsPaid ? 1 : -1;
 									});
 
-									return sortedParticipants.map((participant, index) => (
-										<tr key={participant.id}>
-											<td className="border border-gray-300 px-3 py-2">{index + 1}</td>
-											<td className="border border-gray-300 px-3 py-2 font-medium">{participant.name}</td>
-											<td className="border border-gray-300 px-3 py-2 text-right">{formatRatio(participant.ratio_value || 1)}</td>
-											<td className="border border-gray-300 px-3 py-2 text-right font-semibold">
-												{formatCurrencyRounded(participant.total_amount || 0)}
-											</td>
-											<td className="border border-gray-300 px-3 py-2 text-right">
-												{formatCurrencyRounded(participant.paid_amount || 0)}
-											</td>
-											<td className="border border-gray-300 px-3 py-2 text-right">
-												{participant.debt_amount > 0 ? (
-													<div>
-														<div className="font-semibold mb-1">{formatCurrencyRounded(participant.debt_amount || 0)}</div>
-														{participant.debt_details && participant.debt_details.length > 0 && (
-															<div className="text-xs text-gray-600 space-y-1">
-																{participant.debt_details.map((debt, idx) => (
-																	<div key={idx} className="text-right">
-																		{debt.date}: {formatCurrencyRounded(debt.amount)}
-																	</div>
-																))}
-															</div>
-														)}
-													</div>
-												) : (
-													"-"
-												)}
-											</td>
-											<td className="border border-gray-300 px-3 py-2 text-right font-semibold">
-												{formatCurrencyRounded((participant.total_amount || 0) + (participant.debt_amount || 0))}
-											</td>
-											<td className="border border-gray-300 px-3 py-2 text-center">{participant.is_paid ? "✓" : ""}</td>
-										</tr>
-									));
+									return sortedParticipants.map((participant, index) => {
+										const shareAmount = participant.share_amount || 0;
+										const foodAmount = participant.food_amount || 0;
+										const paidAmount = participant.paid_amount || 0;
+										const totalAmount = shareAmount + foodAmount - paidAmount;
+
+										return (
+											<tr key={participant.id}>
+												<td className="border border-gray-300 px-3 py-2">{index + 1}</td>
+												<td className="border border-gray-300 px-3 py-2">
+													<div className="font-medium">{participant.name}</div>
+													<div className="text-xs text-gray-600 mt-1">Mức: {formatRatio(participant.ratio_value || 1)}</div>
+												</td>
+												<td className="border border-gray-300 px-3 py-2 text-right">
+													{formatCurrencyRounded(paidAmount)}
+												</td>
+												<td className="border border-gray-300 px-3 py-2 text-right">
+													{formatCurrencyRounded(foodAmount)}
+												</td>
+												<td className="border border-gray-300 px-3 py-2 text-left text-xs">
+													{participant.note || "-"}
+												</td>
+												<td className="border border-gray-300 px-3 py-2 text-right">
+													{participant.debt_amount > 0 ? (
+														<div>
+															<div className="font-semibold mb-1">{formatCurrencyRounded(participant.debt_amount || 0)}</div>
+															{participant.debt_details && participant.debt_details.length > 0 && (
+																<div className="text-xs text-gray-600 space-y-1">
+																	{participant.debt_details.map((debt, idx) => (
+																		<div key={idx} className="text-right">
+																			{debt.date}: {formatCurrencyRounded(debt.amount)}
+																		</div>
+																	))}
+																</div>
+															)}
+														</div>
+													) : (
+														"-"
+													)}
+												</td>
+												<td className="border border-gray-300 px-3 py-2 text-right font-semibold">
+													{formatCurrencyRounded(totalAmount + (participant.debt_amount || 0))}
+												</td>
+												<td className="border border-gray-300 px-3 py-2 text-center">{participant.is_paid ? "✓" : ""}</td>
+											</tr>
+										);
+									});
 								})()}
 							</tbody>
 						</table>
@@ -130,10 +142,10 @@ export default function PartyBillExport({ bill, paymentAccounts = [], paymentAcc
 								{activeAccounts.map((account) => {
 									// Check if qr_code_image is already a base64 string (starts with data:image/)
 									const isBase64 = account.qr_code_image && account.qr_code_image.startsWith('data:image/');
-									
+
 									// Use base64 from paymentAccountImages (preloaded), or direct base64 from account, or fallback to old URL method
 									const base64Image = paymentAccountImages[account.id];
-									const imageSrc = base64Image || (isBase64 ? account.qr_code_image : null) || 
+									const imageSrc = base64Image || (isBase64 ? account.qr_code_image : null) ||
 										(account.qr_code_image_url || (account.qr_code_image ? `${window.location.origin}/storage/${account.qr_code_image}` : null));
 
 									return (

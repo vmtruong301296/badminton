@@ -15,6 +15,7 @@ class PartyBillParticipant extends Model
         'share_amount',
         'total_amount',
         'paid_amount',
+        'food_amount',
         'note',
         'is_paid',
         'paid_at',

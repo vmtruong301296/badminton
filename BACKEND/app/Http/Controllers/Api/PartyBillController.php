@@ -82,7 +82,8 @@ class PartyBillController extends Controller
                 $ratioValue = isset($p['ratio_value']) ? (float) $p['ratio_value'] : 1;
                 $shareAmount = (int) round($ratioValue * $unitPrice);
                 $paidAmount = isset($p['paid_amount']) ? (int) $p['paid_amount'] : 0;
-                $totalAmount = $shareAmount - $paidAmount; // Thành tiền = share - số tiền đã chi
+                $foodAmount = isset($p['food_amount']) ? (int) $p['food_amount'] : 0;
+                $totalAmount = $shareAmount + $foodAmount - $paidAmount; // Thành tiền = share + số tiền món ăn - số tiền đã chi
                 $isPaid = $p['is_paid'] ?? false;
 
                 PartyBillParticipant::create([
@@ -93,6 +94,7 @@ class PartyBillController extends Controller
                     'share_amount' => $shareAmount,
                     'total_amount' => $totalAmount,
                     'paid_amount' => $paidAmount,
+                    'food_amount' => $foodAmount,
                     'note' => $p['note'] ?? null,
                     'is_paid' => $isPaid,
                     'paid_at' => $isPaid ? now() : null,
