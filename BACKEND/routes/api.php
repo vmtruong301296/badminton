@@ -27,7 +27,7 @@ Route::middleware('auth')->group(function () {
 		return 'Migrate done!';
 	});
 
-	Route::get('/clear/cache/123', function ($key) {
+	Route::get('/clear/cache/123', function () {
 
     // Clear cache
     Artisan::call('cache:clear');
