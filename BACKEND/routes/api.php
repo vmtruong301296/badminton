@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\RatioController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ShuttleTypeController;
 use App\Http\Controllers\Api\UserController;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 // Authentication (Public routes)
@@ -20,6 +21,27 @@ Route::get('me', [AuthController::class, 'me'])->middleware('auth');
 
 // Protected routes - require authentication
 Route::middleware('auth')->group(function () {
+
+	Route::get('/run-migrate-secret-123', function () {
+		Artisan::call('migrate', ['--force' => true]);
+		return 'Migrate done!';
+	});
+
+	Route::get('/clear/cache/123', function ($key) {
+
+    // Clear cache
+    Artisan::call('cache:clear');
+
+    // Clear & cache config
+    Artisan::call('config:clear');
+
+    // Clear & cache route
+    Artisan::call('route:clear');
+    Artisan::call('route:cache');
+
+    return "All caches cleared successfully!";
+});
+
 	// Players (Người chơi)
 	Route::apiResource('players', UserController::class);
 	Route::get('players/{id}/debts', [UserController::class, 'debts']);
