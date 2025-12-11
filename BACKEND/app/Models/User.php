@@ -96,6 +96,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class);
     }
 
+    public function playerLists()
+    {
+        return $this->hasMany(PlayerList::class);
+    }
+
     /**
      * Check if user has a specific role.
      */

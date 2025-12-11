@@ -108,5 +108,42 @@ export const authApi = {
   me: () => api.get('/me'),
 };
 
+// Player Lists (Danh sách VĐV)
+export const playerListsApi = {
+  getAll: () => api.get('/player-lists'),
+  getById: (id) => api.get(`/player-lists/${id}`),
+  create: (data) => api.post('/player-lists', data),
+  update: (id, data) => api.put(`/player-lists/${id}`, data),
+  delete: (id) => api.delete(`/player-lists/${id}`),
+};
+
+// Tournament Players (VĐV trong danh sách)
+export const tournamentPlayersApi = {
+  getAll: (params) => api.get('/tournament-players', { params }),
+  getById: (id) => api.get(`/tournament-players/${id}`),
+  create: (data) => api.post('/tournament-players', data),
+  update: (id, data) => api.put(`/tournament-players/${id}`, data),
+  delete: (id) => api.delete(`/tournament-players/${id}`),
+  import: (playerListId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('player_list_id', playerListId);
+    return api.post('/tournament-players/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+};
+
+// Brackets (Bảng thi đấu)
+export const bracketsApi = {
+  getAll: (playerListId) => api.get(`/player-lists/${playerListId}/brackets`),
+  getById: (playerListId, bracketId) => api.get(`/player-lists/${playerListId}/brackets/${bracketId}`),
+  organize: (playerListId, data) => api.post(`/player-lists/${playerListId}/brackets/organize`, data),
+  delete: (playerListId, bracketId) => api.delete(`/player-lists/${playerListId}/brackets/${bracketId}`),
+  deleteAll: (playerListId) => api.delete(`/player-lists/${playerListId}/brackets`),
+};
+
 export default api;
 

@@ -2,11 +2,14 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillController;
+use App\Http\Controllers\Api\BracketController;
 use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\PaymentAccountController;
 use App\Http\Controllers\Api\PartyBillController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\PlayerController;
+use App\Http\Controllers\Api\PlayerListController;
 use App\Http\Controllers\Api\RatioController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ShuttleTypeController;
@@ -59,6 +62,16 @@ Route::middleware('auth')->group(function () {
 	// Permissions (Quyền chức năng)
 	Route::get('permissions', [PermissionController::class, 'index']);
 	Route::get('permissions/{id}', [PermissionController::class, 'show']);
+
+	// Tournament Brackets (Xếp bảng thi đấu)
+	Route::apiResource('player-lists', PlayerListController::class);
+	Route::apiResource('tournament-players', PlayerController::class);
+	Route::post('tournament-players/import', [PlayerController::class, 'import']);
+	Route::get('player-lists/{playerListId}/brackets', [BracketController::class, 'index']);
+	Route::post('player-lists/{playerListId}/brackets/organize', [BracketController::class, 'organize']);
+	Route::get('player-lists/{playerListId}/brackets/{bracketId}', [BracketController::class, 'show']);
+	Route::delete('player-lists/{playerListId}/brackets/{bracketId}', [BracketController::class, 'destroy']);
+	Route::delete('player-lists/{playerListId}/brackets', [BracketController::class, 'destroyAll']);
 });
 
 // Serve images with CORS headers

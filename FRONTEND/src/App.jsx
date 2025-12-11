@@ -13,6 +13,7 @@ import BillDetail from './screens/bills/BillDetail';
 import PaymentAccountsManagement from './screens/payment-accounts/PaymentAccountsManagement';
 import RolesManagement from './screens/roles/RolesManagement';
 import PartyBills from './screens/party/PartyBills';
+import TournamentBrackets from './screens/tournament/TournamentBrackets';
 
 function LoginRoute() {
 	const { user, loading } = useAuth();
@@ -132,6 +133,16 @@ function AppRoutes() {
 					<ProtectedRoute requiredPermission="roles.view">
 						<Layout>
 							<RolesManagement />
+						</Layout>
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/tournament-brackets"
+				element={
+					<ProtectedRoute>
+						<Layout>
+							<TournamentBrackets />
 						</Layout>
 					</ProtectedRoute>
 				}
