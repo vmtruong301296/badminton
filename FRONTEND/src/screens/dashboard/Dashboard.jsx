@@ -91,7 +91,7 @@ export default function Dashboard() {
 		return "Chưa thanh toán";
 	};
 
-	// Check if bill is overdue (more than 1 week) and has unpaid players
+	// Check if bill is overdue (quá 7 ngày) and has unpaid players
 	const isOverdueWarning = (bill) => {
 		if (!bill.date) return false;
 
@@ -105,14 +105,37 @@ export default function Dashboard() {
 		const diffTime = today - billDate;
 		const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-		// Check if bill is more than 7 days old (quá hạn 1 tuần lễ)
-		const isOverdue = diffDays > 7;
+		// Check if bill is 7 days or more old (quá 7 ngày)
+		const isOverdue = diffDays >= 7;
 
 		// Check if there are unpaid players
 		const unpaidCount = bill.bill_players?.filter((p) => !p.is_paid).length || 0;
 		const hasUnpaidPlayers = unpaidCount > 0;
 
 		return isOverdue && hasUnpaidPlayers;
+	};
+
+	// Check if player has overdue bills (quá 7 ngày)
+	const isPlayerOverdue = (player) => {
+		if (!player.unpaidDates || player.unpaidDates.length === 0) return false;
+
+		const today = new Date();
+		today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+		// Check if any unpaid date is 7 days or more old
+		return player.unpaidDates.some((dateItem) => {
+			if (!dateItem.date) return false;
+
+			const billDate = new Date(dateItem.date);
+			billDate.setHours(0, 0, 0, 0); // Reset time to start of day
+
+			// Calculate difference in days
+			const diffTime = today - billDate;
+			const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+			// Check if bill is 7 days or more old (quá 7 ngày)
+			return diffDays >= 7;
+		});
 	};
 
 	const handleDeleteClick = (billId) => {
@@ -779,8 +802,15 @@ export default function Dashboard() {
 							) : (
 								unpaidPlayers.map((player) => {
 									const isMarking = markingPayment.has(player.userId);
+									const isOverdue = isPlayerOverdue(player);
 									return (
-										<div key={player.userId} className="px-4 sm:px-6 py-3 hover:bg-gray-50 relative">
+										<div 
+											key={player.userId} 
+											className={`px-4 sm:px-6 py-3 relative ${
+												isOverdue 
+													? "bg-red-100 hover:bg-red-200" 
+													: "hover:bg-gray-50"
+											}`}>
 											<div className="pr-14 sm:pr-8 mb-2">
 												<div className="text-xs sm:text-sm font-semibold text-gray-900">
 													{player.name}: <span className="text-red-600">{formatCurrencyRounded(player.totalAmount)}</span>
